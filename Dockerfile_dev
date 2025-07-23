@@ -1,0 +1,144 @@
+# SPDX-FileCopyrightText: 2024 Development Environment
+# SPDX-License-Identifier: Apache-2.0
+#
+# Development-oriented Dockerfile for NRF application
+# This image includes development tools for iterative development workflow
+
+FROM golang:1.24.5-bookworm
+
+# Set maintainer and description
+LABEL maintainer="Aether SD-Core Developer" \
+    description="ONF 5G Core NRF Development Environment" \
+    version="Development"
+
+# Install development tools and dependencies
+RUN apt-get update && \
+    apt-get -y install --no-install-recommends \
+    # Basic development tools
+    git \
+    vim \
+    nano \
+    curl \
+    wget \
+    tree \
+    htop \
+    # Network and debugging tools
+    net-tools \
+    netcat-openbsd \
+    tcpdump \
+    strace \
+    lsof \
+    # Build dependencies
+    apt-transport-https \
+    ca-certificates \
+    gcc \
+    cmake \
+    autoconf \
+    libtool \
+    pkg-config \
+    libmnl-dev \
+    libyaml-dev \
+    # Additional useful tools
+    jq \
+    make \
+    bash-completion \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install additional Go tools for development
+RUN go install github.com/air-verse/air@latest && \
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Set working directory
+WORKDIR /app
+
+# Create directories for development
+RUN mkdir -p /app/bin /app/logs /app/config
+
+# Set environment variables for development
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GO111MODULE=on
+
+# Expose common ports that might be used during development
+EXPOSE 8000 8080 29510 29510/udp
+
+# Create a development script
+RUN echo '#!/bin/bash\n\
+echo "=== NRF Development Environment ==="\n\
+echo "Available commands:"\n\
+echo "  build-app    - Build the NRF application"\n\
+echo "  run-app      - Run the NRF application"\n\
+echo "  test-app     - Run tests"\n\
+echo "  lint-app     - Run linter"\n\
+echo "  clean-app    - Clean build artifacts"\n\
+echo ""\n\
+echo "Current directory: $(pwd)"\n\
+echo "Go version: $(go version)"\n\
+echo "======================================="\n\
+' > /usr/local/bin/dev-info && chmod +x /usr/local/bin/dev-info
+
+# Create helper scripts for common development tasks
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Building NRF application..."\n\
+make clean || true\n\
+make all\n\
+echo "Build completed successfully!"\n\
+echo "Binary location: $(find . -name "nrf" -type f 2>/dev/null | head -1)"\n\
+' > /usr/local/bin/build-app && chmod +x /usr/local/bin/build-app
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running NRF application..."\n\
+if [ -f "./bin/nrf" ]; then\n\
+    echo "Starting NRF server..."\n\
+    ./bin/nrf "$@"\n\
+elif [ -f "./nrf" ]; then\n\
+    echo "Starting NRF server..."\n\
+    ./nrf "$@"\n\
+else\n\
+    echo "NRF binary not found. Please run build-app first."\n\
+    exit 1\n\
+fi\n\
+' > /usr/local/bin/run-app && chmod +x /usr/local/bin/run-app
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running tests..."\n\
+go test -v ./...\n\
+echo "Tests completed!"\n\
+' > /usr/local/bin/test-app && chmod +x /usr/local/bin/test-app
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running linter..."\n\
+golangci-lint run ./...\n\
+echo "Linting completed!"\n\
+' > /usr/local/bin/lint-app && chmod +x /usr/local/bin/lint-app
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Cleaning build artifacts..."\n\
+make clean || true\n\
+go clean -cache\n\
+rm -rf bin/ || true\n\
+echo "Clean completed!"\n\
+' > /usr/local/bin/clean-app && chmod +x /usr/local/bin/clean-app
+
+# Set up bash aliases for convenience
+RUN echo 'alias ll="ls -la"\n\
+alias la="ls -la"\n\
+alias build="build-app"\n\
+alias run="run-app"\n\
+alias test="test-app"\n\
+alias lint="lint-app"\n\
+alias clean="clean-app"\n\
+' >> /root/.bashrc
+
+# Run development info on container start
+RUN echo 'dev-info' >> /root/.bashrc
+
+# Default command starts an interactive bash shell
+CMD ["bash"]
