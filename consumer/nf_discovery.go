@@ -35,13 +35,13 @@ var SendSearchNFInstances = func(nrfUri string, targetNfType, requestNfType mode
 	models.SearchResult, error,
 ) {
 	if udmContext.UDM_Self().EnableNrfCaching {
-		return NRFCacheSearchNFInstances(context.TODO(), nrfUri, targetNfType, requestNfType, param)
+		return NRFCacheSearchNFInstances(nrfUri, targetNfType, requestNfType, param)
 	} else {
-		return SendNfDiscoveryToNrf(context.TODO(), nrfUri, targetNfType, requestNfType, param)
+		return SendNfDiscoveryToNrf(nrfUri, targetNfType, requestNfType, param)
 	}
 }
 
-var SendNfDiscoveryToNrf = func(ctx context.Context, nrfUri string, targetNfType, requesterNfType models.NfType, param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts,
+var SendNfDiscoveryToNrf = func(nrfUri string, targetNfType, requesterNfType models.NfType, param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts,
 ) (models.SearchResult, error) {
 	// Set client and set url
 	configuration := Nnrf_NFDiscovery.NewConfiguration()
