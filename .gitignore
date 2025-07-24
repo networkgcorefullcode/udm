@@ -9,6 +9,7 @@
 .idea/
 # Visual Studio Code
 .vscode/
+bin/
 # emacs/vim
 GPATH
 GRTAGS
