@@ -58,3 +58,5 @@ require (
 	gopkg.in/h2non/gock.v1 v1.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/omec-project/openapi => github.com/networkgcorefullcode/openapi v1.2.1
