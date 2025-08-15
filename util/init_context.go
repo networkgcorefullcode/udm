@@ -78,4 +78,8 @@ func InitUDMContext(udmContext *context.UDMContext) {
 		},
 	}
 	udmContext.InitNFService(servingNameList, config.Info.Version)
+
+	if configuration.ManualConfigs != nil {
+		udmContext.ManualConfig = configuration.ManualConfigs
+	}
 }
