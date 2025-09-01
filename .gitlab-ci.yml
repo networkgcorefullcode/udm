@@ -1,0 +1,67 @@
+stages: 
+  # - mr-checks
+  - build
+  # - deploy
+  # - code-test
+
+include:
+  # - local: .cicd/telegram.yml
+
+
+build-docker-image:]:
+  #extends: [.telegram]
+
+  stage: build
+  tags:
+    - aether-runner
+  image: docker:20.10
+  services:
+    - name: docker:20.10-dind
+      alias: docker
+      command: ["--insecure-registry=192.168.12.15:8083"]
+  variables:
+    DOCKER_TLS_CERTDIR: ""  # desactiva TLS para simplificar
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker info
+
+    - docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    
+    - apk update && apk add --no-cache make bash git wget
+
+    -  wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+
+    -  rm -rf /usr/local/go && tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
+
+    - export PATH=$PATH:/usr/local/go/bin 
+
+    - go version
+
+    - make docker-build 
+
+    - make docker-push
+    
+    - docker container prune --force
+    
+    - docker image prune --force
+    
+    - echo "Build and push of image completed!"
+
+  rules:
+    # Caso 1: Merge Request a main
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+      when: always
+
+    # Caso 2: Merge Request a dev
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
+      when: always
+
+    # Caso 3: Push directo a dev
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      when: always
+
+  needs: []
+
+
+
