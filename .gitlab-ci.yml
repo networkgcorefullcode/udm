@@ -46,6 +46,8 @@ build-docker-image:
 
     - echo "CI_PROJECT_NAME=$(make -s -f Makefile print-target)" >> variables.env
 
+    - echo "BRANCH=$(make -s -f Makefile print-branch)" >> variables.env
+
     - make docker-build
 
     - make docker-push
@@ -97,7 +99,7 @@ update-helm-values:
     - cd aether
 
     # 2. Crear rama nueva (basada en dev)
-    - BRANCH_NAME="update-${NF_VERSION}"
+    - BRANCH_NAME="update-${BRANCH}"
     - git checkout dev
     - git pull origin dev
     - git checkout -b $BRANCH_NAME
