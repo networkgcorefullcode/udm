@@ -37,7 +37,7 @@ VERSION = $(shell git describe --tags)
 BUILD_TIME = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 COMMIT_HASH = $(shell git submodule status | grep $(GO_SRC_PATH)/$(@F) | awk '{print $$(1)}' | cut -c1-8)
 COMMIT_TIME = $(shell cd $(GO_SRC_PATH) && git log --pretty="%ai" -1 | awk '{time=$$(1)"T"$$(2)"Z"; print time}')
-LDFLAGS ?= 
+LDFLAGS ?=
 
 .PHONY: $(NF) clean docker-build docker-push
 
@@ -60,6 +60,12 @@ vpath %.go $(addprefix $(GO_SRC_PATH)/, $(GO_NF))
 clean:
 	rm -rf $(addprefix $(GO_BIN_PATH)/, $(GO_NF))
 	rm -rf $(addprefix $(GO_SRC_PATH)/, $(addsuffix /$(C_BUILD_PATH), $(C_NF)))
+
+print-tag:
+	@echo ${DOCKER_REPOSITORY}5gc-${DOCKER_TARGETS}-${DOCKER_TAG}
+
+print-target:
+	@echo ${DOCKER_TARGETS}
 
 docker-build:
 	@go mod vendor
