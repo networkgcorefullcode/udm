@@ -126,13 +126,13 @@ update-helm-values:
   rules:
     # Caso 1: Merge Request a main
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
-      when: always
+
 
     # Caso 2: Merge Request a dev
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"'
-      when: always
+
 
     # Caso 3: Push directo a dev
     - if: '$CI_COMMIT_BRANCH == "dev"'
-      when: always
+
 
