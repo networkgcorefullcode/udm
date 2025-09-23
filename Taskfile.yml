@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Taskfile equivalent to udm Makefile
 
-version: '3'
+version: "3"
 
 vars:
   PROJECT_NAME: sdcore
   DOCKER_VERSION:
     sh: cat ./VERSION 2>/dev/null || echo "latest"
-  
+
   # Docker related
   DOCKER_REGISTRY: ""
   DOCKER_REPOSITORY: ""
@@ -17,7 +17,7 @@ vars:
   DOCKER_IMAGENAME: "{{.DOCKER_REGISTRY}}{{.DOCKER_REPOSITORY}}{{.PROJECT_NAME}}:{{.DOCKER_TAG}}"
   DOCKER_BUILDKIT: 1
   DOCKER_BUILD_ARGS: ""
-  
+
   # Docker labels
   DOCKER_LABEL_VCS_URL:
     sh: git remote get-url $(git remote) 2>/dev/null || echo "unknown"
@@ -37,13 +37,13 @@ vars:
       fi
   DOCKER_LABEL_BUILD_DATE:
     sh: date -u "+%Y-%m-%dT%H:%M:%SZ"
-  
+
   DOCKER_TARGETS: udm
   GO_BIN_PATH: bin
   GO_SRC_PATH: ./
   NF: udm
   GO_NF: udm
-  
+
   # Build info
   VERSION:
     sh: git describe --tags 2>/dev/null || echo "dev"
@@ -108,6 +108,13 @@ tasks:
             -covermode=atomic \
             -v \
             ./ ./...
+
+  mod-start:
+    desc: "execute go mod download to performance the docker build step"
+    aliases: [mod]
+    cmds:
+      - cd {{.GO_SRC_PATH}}
+      - go mod download
 
   _coverage-dir:
     internal: true
