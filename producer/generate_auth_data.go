@@ -205,40 +205,29 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	logger.UeauLog.Debugln("K", k)
 
 	if authSubs.PermanentKey != nil {
-		// --- INICIO DE LA MODIFICACIÓN ---
-		// 2. Extraer la clave encriptada y la clave de encriptación
 		encryptedKiHex := authSubs.PermanentKey.PermanentKeyValue
 		encryptionKeyHex := authSubs.PermanentKey.EncryptionKey
 
-		// 3. Validar que tenemos la clave de encriptación si la Ki está encriptada
 		if encryptionKeyHex == "" {
-			// Decidir qué hacer: ¿asumir que no está encriptada o tratarlo como un error?
-			// Opción A: Asumir que no está encriptada (menos seguro)
-			// kStr = encryptedKiHex
-
-			// Opción B: Tratar como error (más seguro)
-			problemDetails = &models.ProblemDetails{
-				Status: http.StatusForbidden,
-				Cause:  authenticationRejected,
-				Detail: "PermanentKey is present but EncryptionKey is missing",
+			// Si no hay clave de encriptación, asumimos que la clave permanente no está encriptada.
+			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")
+			kStr = encryptedKiHex
+		} else {
+			// Si hay una clave de encriptación, procedemos a desencriptar.
+			logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue.")
+			decryptedKiHex, decryptErr := keydecrypt.DecryptKi(encryptedKiHex, encryptionKeyHex)
+			if decryptErr != nil {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: fmt.Sprintf("Failed to decrypt PermanentKey: %s", decryptErr.Error()),
+				}
+				logger.UeauLog.Errorf("PermanentKey decryption failed: %+v", decryptErr)
+				return nil, problemDetails
 			}
-			logger.UeauLog.Errorln("PermanentKey received without EncryptionKey")
-			return nil, problemDetails
+			kStr = decryptedKiHex
 		}
 
-		// 4. Llamar a la nueva función de desencriptación
-		decryptedKiHex, decryptErr := keydecrypt.DecryptKi(encryptedKiHex, encryptionKeyHex)
-		if decryptErr != nil {
-			problemDetails = &models.ProblemDetails{
-				Status: http.StatusForbidden,
-				Cause:  authenticationRejected,
-				Detail: fmt.Sprintf("Failed to decrypt PermanentKey: %s", decryptErr.Error()),
-			}
-			logger.UeauLog.Errorf("PermanentKey decryption failed: %+v", decryptErr)
-			return nil, problemDetails
-		}
-		kStr = decryptedKiHex
-		//---FIN DE LA MODIFICACION---
 		if len(kStr) == keyStrLen {
 			k, err = hex.DecodeString(kStr)
 			if err != nil {
