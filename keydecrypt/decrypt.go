@@ -1,6 +1,7 @@
 package keydecrypt
 
 import (
+	"crypto/aes"
 	"crypto/des"
 	"encoding/hex"
 	"errors"
@@ -38,8 +39,11 @@ func DecryptKi(encryptedKiHex string, encryptionKeyHex string) (string, error) {
 	// Paso 2: Seleccionar el algoritmo basado en el tamaño de la clave de encriptación (k4)
 	switch len(encryptionKey) {
 	case DES_KEY_SIZE:
-		// decryptedKi, err = decryptDES(encryptedKi, encryptionKey)
-		return "", errors.New("DES decryption not yet implemented") // Placeholder
+		decryptedKi, err = decryptDES(encryptedKi, encryptionKey)
+		if err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(decryptedKi), nil
 	case TDES_KEY_SIZE:
 		decryptedKi, err = decrypt3DES(encryptedKi, encryptionKey)
 		if err != nil {
@@ -47,8 +51,11 @@ func DecryptKi(encryptedKiHex string, encryptionKeyHex string) (string, error) {
 		}
 		return hex.EncodeToString(decryptedKi), nil
 	case AES128_KEY_SIZE:
-		// decryptedKi, err = decryptAES(encryptedKi, encryptionKey)
-		return "", errors.New("AES-128 decryption not yet implemented") // Placeholder
+		decryptedKi, err = decryptAES(encryptedKi, encryptionKey)
+		if err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(decryptedKi), nil
 	case AES256_KEY_SIZE:
 		// decryptedKi, err = decryptAES(encryptedKi, encryptionKey)
 		return "", errors.New("AES-256 decryption not yet implemented") // Placeholder
@@ -66,12 +73,24 @@ func DecryptKi(encryptedKiHex string, encryptionKeyHex string) (string, error) {
 
 // --- Funciones Privadas (no exportadas) ---
 
-// decryptDES se encargaría de la desencriptación con DES.
-// (No implementada aún)
-//func decryptDES(ciphertext, key []byte) ([]byte, error) {
-// Lógica de desencriptación DES
-//	return nil, nil
-//}
+// decryptDES se encarga de la desencriptación con DES en modo ECB.
+func decryptDES(ciphertext, key []byte) ([]byte, error) {
+	block, err := des.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("error al crear bloque DES: %v", err)
+	}
+
+	if len(ciphertext) != block.BlockSize() {
+		return nil, fmt.Errorf("el texto cifrado debe tener el tamaño de un bloque DES (%d bytes), pero tiene %d", block.BlockSize(), len(ciphertext))
+	}
+
+	plaintext := make([]byte, len(ciphertext))
+
+	// Como el texto cifrado es de un solo bloque, se desencripta directamente.
+	block.Decrypt(plaintext, ciphertext)
+
+	return plaintext, nil
+}
 
 // decrypt3DES se encargaría de la desencriptación con Triple DES.
 // (No implementada aún)
@@ -93,6 +112,26 @@ func decrypt3DES(ciphertext, key []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
+}
+
+func decryptAES(ciphertext, key []byte) ([]byte, error) {
+	// Verificar que el mensaje encriptado tenga 16 bytes (128 bits)
+	if len(ciphertext) != AES128_KEY_SIZE {
+		return nil, fmt.Errorf("el mensaje encriptado debe tener %d bytes", AES128_KEY_SIZE)
+	}
+
+	// Crear cipher block
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("error creando cipher block: %v", err)
+	}
+
+	// El mensaje encriptado es el mismo tamaño que el bloque (16 bytes)
+	// Para AES-128 ECB, simplemente usamos el cipher block para desencriptar
+	decrypted := make([]byte, len(ciphertext))
+	block.Decrypt(decrypted, ciphertext)
+
+	return decrypted, nil
 }
 
 // decryptAES se encargaría de la desencriptación con AES (para 128 y 256 bits).
