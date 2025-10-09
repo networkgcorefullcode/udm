@@ -52,6 +52,22 @@ func InitUDMContext(udmContext *context.UDMContext) {
 			}
 		}
 	}
+	// Initialize SSM configuration in udmContext
+	ssm := configuration.Ssm
+	udmContext.SsmUri = ""
+	udmContext.SsmEnable = false
+	udmContext.SsmScheme = models.UriScheme_HTTP
+	if ssm != nil {
+		if ssm.Host != "" {
+			udmContext.SsmUri = ssm.Host
+		}
+		if ssm.Enable {
+			udmContext.SsmEnable = true
+		}
+		if ssm.Scheme != "" {
+			udmContext.SsmScheme = models.UriScheme(ssm.Scheme)
+		}
+	}
 
 	udmContext.EnableNrfCaching = configuration.EnableNrfCaching
 	if configuration.EnableNrfCaching {

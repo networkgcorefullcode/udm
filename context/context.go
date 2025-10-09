@@ -56,6 +56,9 @@ type UDMContext struct {
 	SBIPort                        int
 	EnableNrfCaching               bool
 	NrfCacheEvictionInterval       time.Duration
+	SsmUri                         string
+	SsmScheme                      models.UriScheme
+	SsmEnable                      bool
 }
 
 type UdmUeContext struct {

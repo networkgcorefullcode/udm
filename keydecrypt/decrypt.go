@@ -80,14 +80,16 @@ func decryptDES(ciphertext, key []byte) ([]byte, error) {
 		return nil, fmt.Errorf("error al crear bloque DES: %v", err)
 	}
 
-	if len(ciphertext) != block.BlockSize() {
-		return nil, fmt.Errorf("el texto cifrado debe tener el tamaño de un bloque DES (%d bytes), pero tiene %d", block.BlockSize(), len(ciphertext))
+	if len(ciphertext)%block.BlockSize() != 0 {
+		return nil, fmt.Errorf("el texto cifrado no es múltiplo del tamaño de bloque (%d bytes)", block.BlockSize())
 	}
 
 	plaintext := make([]byte, len(ciphertext))
 
-	// Como el texto cifrado es de un solo bloque, se desencripta directamente.
-	block.Decrypt(plaintext, ciphertext)
+	// Desencriptar bloque por bloque (ECB)
+	for i := 0; i < len(ciphertext); i += block.BlockSize() {
+		block.Decrypt(plaintext[i:i+block.BlockSize()], ciphertext[i:i+block.BlockSize()])
+	}
 
 	return plaintext, nil
 }

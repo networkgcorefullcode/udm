@@ -39,6 +39,7 @@ const (
 type Configuration struct {
 	UdmName                  string   `yaml:"udmName,omitempty"`
 	Sbi                      *Sbi     `yaml:"sbi,omitempty"`
+	Ssm                      *Ssm     `yaml:"ssm,omitempty"` // <--- AÑADIDO
 	ServiceList              []string `yaml:"serviceList,omitempty"`
 	NrfUri                   string   `yaml:"nrfUri,omitempty"`
 	WebuiUri                 string   `yaml:"webuiUri"`
@@ -60,6 +61,12 @@ type Tls struct {
 	Log string `yaml:"log,omitempty"`
 	Pem string `yaml:"pem,omitempty"`
 	Key string `yaml:"key,omitempty"`
+}
+
+type Ssm struct {
+	Enable bool   `yaml:"enable"`
+	Scheme string `yaml:"scheme"`
+	Host   string `yaml:"host"`
 }
 
 type Keys struct {
