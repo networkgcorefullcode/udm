@@ -13,12 +13,12 @@ import (
 	"math/big"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"encoding/base64"
 
 	"github.com/antihax/optional"
+	ssm_const "github.com/networkgcorefullcode/ssm/const"
 	ssm_models "github.com/networkgcorefullcode/ssm/models"
 	"github.com/omec-project/openapi"
 	"github.com/omec-project/openapi/Nudr_DataRepository"
@@ -45,13 +45,6 @@ const (
 const (
 	authenticationRejected string = "AUTHENTICATION_REJECTED"
 )
-
-var encryptionAlgorithmToKeyLabel = map[int]string{
-	1: "K4AES-256",
-	2: "K4AES-128",
-	3: "K4DES",
-	4: "K43DES",
-}
 
 func aucSQN(opc, k, auts, rand []byte) ([]byte, []byte) {
 	AK, SQNms := make([]byte, 6), make([]byte, 6)
@@ -237,7 +230,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 				// 2. Preparar la petición de desencriptado
 				encryptionAlgorithm := int(authSubs.PermanentKey.EncryptionAlgorithm)
-				keyLabel, ok := encryptionAlgorithmToKeyLabel[encryptionAlgorithm]
+				keyLabel, ok := ssm_const.AlgorithmLabelMap[encryptionAlgorithm]
 				if !ok {
 					problemDetails = &models.ProblemDetails{
 						Status: http.StatusForbidden,
@@ -248,23 +241,13 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 					return nil, problemDetails
 				}
 
-				keyIdInt, err := strconv.Atoi(encryptionKeyHex)
-				if err != nil {
-					problemDetails = &models.ProblemDetails{
-						Status: http.StatusForbidden,
-						Cause:  authenticationRejected,
-						Detail: fmt.Sprintf("Invalid EncryptionKey format, expected an integer string: %s", encryptionKeyHex),
-					}
-					logger.UeauLog.Errorf("Invalid EncryptionKey format: %v", err)
-					return nil, problemDetails
-				}
-				keyIdInt32 := int32(keyIdInt)
+				keyId := string(authSubs.K4_SNO)
 
 				decryptReq := ssm_models.DecryptRequest{
 					KeyLabel:            keyLabel,
 					CipherB64:           encryptedKiHex,
 					EncryptionAlgoritme: encryptionAlgorithm,
-					Id:                  &keyIdInt32,
+					Id:                  keyId,
 				}
 
 				// 3. Ejecutar la llamada a la API del SSM
