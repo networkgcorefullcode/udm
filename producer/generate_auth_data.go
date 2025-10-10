@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"encoding/base64"
@@ -44,6 +45,13 @@ const (
 const (
 	authenticationRejected string = "AUTHENTICATION_REJECTED"
 )
+
+var encryptionAlgorithmToKeyLabel = map[int]string{
+	1: "K4AES-256",
+	2: "K4AES-128",
+	3: "K4DES",
+	4: "K43DES",
+}
 
 func aucSQN(opc, k, auts, rand []byte) ([]byte, []byte) {
 	AK, SQNms := make([]byte, 6), make([]byte, 6)
@@ -228,10 +236,35 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				ssmClient := ssm_models.NewAPIClient(ssmCfg)
 
 				// 2. Preparar la petición de desencriptado
+				encryptionAlgorithm := int(authSubs.PermanentKey.EncryptionAlgorithm)
+				keyLabel, ok := encryptionAlgorithmToKeyLabel[encryptionAlgorithm]
+				if !ok {
+					problemDetails = &models.ProblemDetails{
+						Status: http.StatusForbidden,
+						Cause:  authenticationRejected,
+						Detail: fmt.Sprintf("Unsupported encryption algorithm: %d", encryptionAlgorithm),
+					}
+					logger.UeauLog.Errorf("Unsupported encryption algorithm: %d", encryptionAlgorithm)
+					return nil, problemDetails
+				}
+
+				keyIdInt, err := strconv.Atoi(encryptionKeyHex)
+				if err != nil {
+					problemDetails = &models.ProblemDetails{
+						Status: http.StatusForbidden,
+						Cause:  authenticationRejected,
+						Detail: fmt.Sprintf("Invalid EncryptionKey format, expected an integer string: %s", encryptionKeyHex),
+					}
+					logger.UeauLog.Errorf("Invalid EncryptionKey format: %v", err)
+					return nil, problemDetails
+				}
+				keyIdInt32 := int32(keyIdInt)
+
 				decryptReq := ssm_models.DecryptRequest{
-					KeyLabel:            encryptionKeyHex, // Usamos la 'EncryptionKey' como la etiqueta de la llave en el HSM
-					CipherB64:           encryptedKiHex,   // La 'PermanentKeyValue' es el dato cifrado en hexadecimal
-					EncryptionAlgoritme: 1,                // TODO: Asumimos '1' para AES_128. Ajustar si es necesario.
+					KeyLabel:            keyLabel,
+					CipherB64:           encryptedKiHex,
+					EncryptionAlgoritme: encryptionAlgorithm,
+					Id:                  &keyIdInt32,
 				}
 
 				// 3. Ejecutar la llamada a la API del SSM
