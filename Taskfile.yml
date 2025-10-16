@@ -1,7 +1,7 @@
 # Copyright 2021-present Open Networking Foundation
 # Copyright 2019 free5GC.org
 # SPDX-License-Identifier: Apache-2.0
-# Taskfile equivalent to AUSF Makefile
+# Taskfile equivalent to UDM Makefile
 
 version: '3'
 
