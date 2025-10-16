@@ -57,7 +57,7 @@ type UDMContext struct {
 	EnableNrfCaching               bool
 	NrfCacheEvictionInterval       time.Duration
 	SsmUri                         string
-	SsmScheme                      models.UriScheme
+	TLS_Insecure                   bool
 	SsmEnable                      bool
 }
 

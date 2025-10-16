@@ -64,9 +64,9 @@ type Tls struct {
 }
 
 type Ssm struct {
-	Enable bool   `yaml:"enable"`
-	Scheme string `yaml:"scheme"`
-	Host   string `yaml:"host"`
+	Enable       bool   `yaml:"enable"`
+	TLS_Insecure bool   `yaml:"tls_insecure"`
+	Host         string `yaml:"host"`
 }
 
 type Keys struct {

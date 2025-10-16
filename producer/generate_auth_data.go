@@ -8,14 +8,14 @@ package producer
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net/http"
 	"reflect"
 	"strings"
-
-	"encoding/base64"
 
 	"github.com/antihax/optional"
 	ssm_const "github.com/networkgcorefullcode/ssm/const"
@@ -212,84 +212,86 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 		encryptedKiHex := authSubs.PermanentKey.PermanentKeyValue
 		encryptionKeyHex := authSubs.PermanentKey.EncryptionKey
 
-		if encryptionKeyHex == "" {
+		switch {
+		case encryptionKeyHex == "":
 			// Si no hay clave de encriptación, asumimos que la clave permanente no está encriptada.
 			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")
 			kStr = encryptedKiHex
-		} else {
-			// Si SSM está habilitado, usamos el servicio SSM para desencriptar la clave permanente.
-			if udm_context.UDM_Self().SsmEnable {
-				// Si hay una clave de encriptación, procedemos a desencriptar usando el servicio SSM.
-				logger.UeauLog.Debugln("EncryptionKey is present, calling SSM to decrypt PermanentKeyValue.")
+		case udm_context.UDM_Self().SsmEnable:
+			// Si SSM está habilitado y hay una clave de encriptación, usamos el servicio SSM para desencriptar.
+			logger.UeauLog.Debugln("EncryptionKey is present, calling SSM to decrypt PermanentKeyValue.")
 
-				// 1. Configurar el cliente SSM
-				ssmCfg := ssm_models.NewConfiguration()
-				ssmCfg.Host = udm_context.UDM_Self().SsmUri
-				ssmCfg.Scheme = string(udm_context.UDM_Self().SsmScheme)
-				ssmClient := ssm_models.NewAPIClient(ssmCfg)
-
-				// 2. Preparar la petición de desencriptado
-				encryptionAlgorithm := int(authSubs.PermanentKey.EncryptionAlgorithm)
-				keyLabel, ok := ssm_const.AlgorithmLabelMap[encryptionAlgorithm]
-				if !ok {
-					problemDetails = &models.ProblemDetails{
-						Status: http.StatusForbidden,
-						Cause:  authenticationRejected,
-						Detail: fmt.Sprintf("Unsupported encryption algorithm: %d", encryptionAlgorithm),
-					}
-					logger.UeauLog.Errorf("Unsupported encryption algorithm: %d", encryptionAlgorithm)
-					return nil, problemDetails
-				}
-
-				keyId := string(authSubs.K4_SNO)
-
-				decryptReq := ssm_models.DecryptRequest{
-					KeyLabel:            keyLabel,
-					CipherB64:           encryptedKiHex,
-					EncryptionAlgoritme: encryptionAlgorithm,
-					Id:                  keyId,
-				}
-
-				// 3. Ejecutar la llamada a la API del SSM
-				decryptedResp, _, decryptErr := ssmClient.EncryptionAPI.DecryptData(context.Background()).DecryptRequest(decryptReq).Execute()
-				if decryptErr != nil {
-					problemDetails = &models.ProblemDetails{
-						Status: http.StatusForbidden,
-						Cause:  authenticationRejected,
-						Detail: fmt.Sprintf("Failed to decrypt PermanentKey via SSM: %s", decryptErr.Error()),
-					}
-					logger.UeauLog.Errorf("SSM decryption failed: %+v", decryptErr)
-					return nil, problemDetails
-				}
-
-				// 4. Procesar la respuesta del SSM
-				// La respuesta 'PlainB64' está en Base64, pero el resto del código espera un string hexadecimal.
-				decryptedKiBytes, b64Err := base64.StdEncoding.DecodeString(decryptedResp.GetPlainB64())
-				if b64Err != nil {
-					problemDetails = &models.ProblemDetails{
-						Status: http.StatusForbidden,
-						Cause:  authenticationRejected,
-						Detail: fmt.Sprintf("Failed to decode SSM response from Base64: %s", b64Err.Error()),
-					}
-					logger.UeauLog.Errorf("SSM response Base64 decoding failed: %+v", b64Err)
-					return nil, problemDetails
-				}
-				kStr = hex.EncodeToString(decryptedKiBytes)
-			} else {
-				// Si hay una clave de encriptación, procedemos a desencriptar.
-				logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue.")
-				decryptedKiHex, decryptErr := keydecrypt.DecryptKi(encryptedKiHex, encryptionKeyHex)
-				if decryptErr != nil {
-					problemDetails = &models.ProblemDetails{
-						Status: http.StatusForbidden,
-						Cause:  authenticationRejected,
-						Detail: fmt.Sprintf("Failed to decrypt PermanentKey: %s", decryptErr.Error()),
-					}
-					logger.UeauLog.Errorf("PermanentKey decryption failed: %+v", decryptErr)
-					return nil, problemDetails
-				}
-				kStr = decryptedKiHex
+			// 1. Configurar el cliente SSM
+			ssmCfg := ssm_models.NewConfiguration()
+			ssmCfg.Servers = ssm_models.ServerConfigurations{
+				{
+					URL: udm_context.UDM_Self().SsmUri,
+				},
 			}
+			ssmCfg.HTTPClient = getHTTPClient(udm_context.UDM_Self().TLS_Insecure)
+			ssmClient := ssm_models.NewAPIClient(ssmCfg)
+
+			// 2. Preparar la petición de desencriptado
+			encryptionAlgorithm := int(authSubs.PermanentKey.EncryptionAlgorithm)
+			keyLabel, ok := ssm_const.AlgorithmLabelMap[encryptionAlgorithm]
+			if !ok {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: fmt.Sprintf("Unsupported encryption algorithm: %d", encryptionAlgorithm),
+				}
+				logger.UeauLog.Errorf("Unsupported encryption algorithm: %d", encryptionAlgorithm)
+				return nil, problemDetails
+			}
+
+			keyId := string(authSubs.K4_SNO)
+
+			decryptReq := ssm_models.DecryptRequest{
+				KeyLabel:            keyLabel,
+				CipherB64:           encryptedKiHex,
+				EncryptionAlgoritme: encryptionAlgorithm,
+				Id:                  keyId,
+			}
+
+			// 3. Ejecutar la llamada a la API del SSM
+			decryptedResp, _, decryptErr := ssmClient.EncryptionAPI.DecryptData(context.Background()).DecryptRequest(decryptReq).Execute()
+			if decryptErr != nil {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: fmt.Sprintf("Failed to decrypt PermanentKey via SSM: %s", decryptErr.Error()),
+				}
+				logger.UeauLog.Errorf("SSM decryption failed: %+v", decryptErr)
+				return nil, problemDetails
+			}
+
+			// 4. Procesar la respuesta del SSM
+			// La respuesta 'PlainB64' está en Base64, pero el resto del código espera un string hexadecimal.
+			decryptedKiBytes, b64Err := base64.StdEncoding.DecodeString(decryptedResp.GetPlainB64())
+			if b64Err != nil {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: fmt.Sprintf("Failed to decode SSM response from Base64: %s", b64Err.Error()),
+				}
+				logger.UeauLog.Errorf("SSM response Base64 decoding failed: %+v", b64Err)
+				return nil, problemDetails
+			}
+			kStr = hex.EncodeToString(decryptedKiBytes)
+		default:
+			// Si SSM no está habilitado pero hay una clave de encriptación, procedemos a desencriptar localmente.
+			logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue locally.")
+			decryptedKiHex, decryptErr := keydecrypt.DecryptKi(encryptedKiHex, encryptionKeyHex)
+			if decryptErr != nil {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: fmt.Sprintf("Failed to decrypt PermanentKey: %s", decryptErr.Error()),
+				}
+				logger.UeauLog.Errorf("PermanentKey decryption failed: %+v", decryptErr)
+				return nil, problemDetails
+			}
+			kStr = decryptedKiHex
 		}
 
 		if len(kStr) == keyStrLen {
@@ -631,4 +633,19 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	response.AuthenticationVector = &av
 	response.Supi = supi
 	return response, nil
+}
+
+func getHTTPClient(tlsInsecure bool) *http.Client {
+	if tlsInsecure {
+		// Create client with insecure TLS configuration
+		return &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+	}
+	// Return default HTTP client for secure connections
+	return &http.Client{}
 }

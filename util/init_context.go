@@ -56,7 +56,7 @@ func InitUDMContext(udmContext *context.UDMContext) {
 	ssm := configuration.Ssm
 	udmContext.SsmUri = ""
 	udmContext.SsmEnable = false
-	udmContext.SsmScheme = models.UriScheme_HTTP
+	udmContext.TLS_Insecure = false
 	if ssm != nil {
 		if ssm.Host != "" {
 			udmContext.SsmUri = ssm.Host
@@ -64,9 +64,7 @@ func InitUDMContext(udmContext *context.UDMContext) {
 		if ssm.Enable {
 			udmContext.SsmEnable = true
 		}
-		if ssm.Scheme != "" {
-			udmContext.SsmScheme = models.UriScheme(ssm.Scheme)
-		}
+		udmContext.TLS_Insecure = ssm.TLS_Insecure
 	}
 
 	udmContext.EnableNrfCaching = configuration.EnableNrfCaching
