@@ -244,7 +244,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				return nil, problemDetails
 			}
 
-			keyId := authSubs.PermanentKey.EncryptionKey
+			keyId := encryptionKeyHex
 
 			decryptReq := ssm_models.DecryptRequest{
 				KeyLabel:            keyLabel,
