@@ -5,7 +5,7 @@ stages:
   #- check_registries
 
 include:
-  - component: $CI_SERVER_FQDN/5g/cicd-components/building-main-fast@main
+  - component: $CI_SERVER_FQDN/5g/cicd-components/${NF_TEMPLATE_FILE}@${CICD_COMPONENTS_REF}
     inputs:
       stage: build
       stage_helm: update-version
