@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -244,13 +243,14 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				return nil, problemDetails
 			}
 
-			keyId := encryptionKeyHex
+			keyId := authSubs.K4_SNO
 
 			decryptReq := ssm_models.DecryptRequest{
 				KeyLabel:            keyLabel,
-				CipherB64:           encryptedKiHex,
-				EncryptionAlgoritme: encryptionAlgorithm,
-				Id:                  keyId,
+				Cipher:              encryptedKiHex,
+				EncryptionAlgorithm: int32(encryptionAlgorithm),
+				Id:                  int32(keyId),
+				Iv:                  "", // IV no es utilizado en este contexto, pero es requerido por la API
 			}
 
 			// 3. Ejecutar la llamada a la API del SSM
@@ -266,18 +266,8 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			}
 
 			// 4. Procesar la respuesta del SSM
-			// La respuesta 'PlainB64' está en Base64, pero el resto del código espera un string hexadecimal.
-			decryptedKiBytes, b64Err := base64.StdEncoding.DecodeString(decryptedResp.GetPlainB64())
-			if b64Err != nil {
-				problemDetails = &models.ProblemDetails{
-					Status: http.StatusForbidden,
-					Cause:  authenticationRejected,
-					Detail: fmt.Sprintf("Failed to decode SSM response from Base64: %s", b64Err.Error()),
-				}
-				logger.UeauLog.Errorf("SSM response Base64 decoding failed: %+v", b64Err)
-				return nil, problemDetails
-			}
-			kStr = hex.EncodeToString(decryptedKiBytes)
+			// La respuesta 'Plain' del SSM está en formato hexadecimal.
+			kStr = decryptedResp.Plain
 		default:
 			// Si SSM no está habilitado pero hay una clave de encriptación, procedemos a desencriptar localmente.
 			logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue locally.")

@@ -24,7 +24,7 @@ configuration:
     - nudm-pp
   ssm:
     enable: false
-    host: https://127.0.0.1:9000
+    host: https://192.168.12.16:9000
     tls_insecure: true
 info:
   description: UDM initial local configuration

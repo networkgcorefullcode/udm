@@ -8,7 +8,7 @@ require (
 	github.com/antihax/optional v1.0.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
-	github.com/networkgcorefullcode/ssm v1.0.4
+	github.com/networkgcorefullcode/ssm v1.0.8
 	github.com/omec-project/openapi v1.5.0
 	github.com/omec-project/util v1.5.4
 	github.com/prometheus/client_golang v1.22.0
