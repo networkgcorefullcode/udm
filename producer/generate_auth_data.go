@@ -212,10 +212,6 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 		encryptionKeyHex := authSubs.PermanentKey.EncryptionKey
 
 		switch {
-		case encryptionKeyHex == "":
-			// Si no hay clave de encriptación, asumimos que la clave permanente no está encriptada.
-			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")
-			kStr = encryptedKiHex
 		case udm_context.UDM_Self().SsmEnable:
 			// Si SSM está habilitado y hay una clave de encriptación, usamos el servicio SSM para desencriptar.
 			logger.UeauLog.Debugln("EncryptionKey is present, calling SSM to decrypt PermanentKeyValue.")
@@ -268,6 +264,12 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			// 4. Procesar la respuesta del SSM
 			// La respuesta 'Plain' del SSM está en formato hexadecimal.
 			kStr = decryptedResp.Plain
+
+		case encryptionKeyHex == "" && authSubs.PermanentKey.EncryptionAlgorithm == 0:
+			// Si no hay clave de encriptación, asumimos que la clave permanente no está encriptada.
+			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")
+			kStr = encryptedKiHex
+
 		default:
 			// Si SSM no está habilitado pero hay una clave de encriptación, procedemos a desencriptar localmente.
 			logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue locally.")
