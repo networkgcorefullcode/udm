@@ -246,7 +246,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				Cipher:              encryptedKiHex,
 				EncryptionAlgorithm: int32(encryptionAlgorithm),
 				Id:                  int32(keyId),
-				Iv:                  "", // IV no es utilizado en este contexto, pero es requerido por la API
+				Iv:                  authSubs.PermanentKey.IV,
 			}
 
 			// 3. Ejecutar la llamada a la API del SSM
