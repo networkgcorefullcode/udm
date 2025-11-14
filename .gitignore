@@ -24,3 +24,9 @@ cscope.*
 *.log
 *.pcap
 vendor*
+udm.exe
+udm
+*.crt
+*.key
+*.pem
+*.csr

@@ -46,6 +46,7 @@ type Configuration struct {
 	Keys                     *Keys    `yaml:"keys,omitempty"`
 	EnableNrfCaching         bool     `yaml:"enableNrfCaching"`
 	NrfCacheEvictionInterval int      `yaml:"nrfCacheEvictionInterval,omitempty"`
+	MetricsPort              string   `yaml:"metricsPort,omitempty"`
 }
 
 type Sbi struct {
@@ -64,11 +65,11 @@ type Tls struct {
 }
 
 type Ssm struct {
-	Enable       bool   `yaml:"enable"`
-	TLS_Insecure bool   `yaml:"tls_insecure"`
-	Host         string `yaml:"host"`
-	MTls            *TLS2     `yaml:"m-tls,omitempty"`
-	Login           *SSMLogin `yaml:"login,omitempty"` // use this config only for development purposes use environment variables in production
+	Enable       bool      `yaml:"enable"`
+	TLS_Insecure bool      `yaml:"tls_insecure"`
+	Host         string    `yaml:"host"`
+	MTls         *TLS2     `yaml:"m-tls,omitempty"`
+	Login        *SSMLogin `yaml:"login,omitempty"` // use this config only for development purposes use environment variables in production
 }
 
 type TLS2 struct {
