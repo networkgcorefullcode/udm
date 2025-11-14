@@ -31,6 +31,7 @@ import (
 	"github.com/omec-project/udm/nfregistration"
 	"github.com/omec-project/udm/parameterprovision"
 	"github.com/omec-project/udm/polling"
+	"github.com/omec-project/udm/service/health"
 	"github.com/omec-project/udm/subscribecallback"
 	"github.com/omec-project/udm/subscriberdatamanagement"
 	"github.com/omec-project/udm/ueauthentication"
@@ -161,7 +162,7 @@ func (udm *UDM) Start() {
 		}
 		logger.AppLog.Infoln("SSM login successful")
 		// ssmsync.SetCfgChannel(configMsgChan)
-		go HealthCheckSSM()
+		go health.HealthCheckSSM()
 		time.Sleep(time.Second * 5) // stop work to send the health check function
 	}
 

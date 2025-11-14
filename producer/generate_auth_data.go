@@ -24,6 +24,7 @@ import (
 	"github.com/omec-project/udm/keydecrypt"
 	"github.com/omec-project/udm/logger"
 	stats "github.com/omec-project/udm/metrics"
+	"github.com/omec-project/udm/service/health"
 	"github.com/omec-project/udm/util"
 	"github.com/omec-project/udm/util/apiclient"
 	"github.com/omec-project/util/httpwrapper"
@@ -212,6 +213,15 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 		switch {
 		case udm_context.UDM_Self().SsmEnable:
+
+			if health.ReadStopCondition() {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: "Service stop condition triggered",
+				}
+				return nil, problemDetails
+			}
 			// If SSM is enabled and there is an encryption key, use the SSM service to decrypt.
 			logger.UeauLog.Debugln("EncryptionKey is present, calling SSM to decrypt PermanentKeyValue.")
 
