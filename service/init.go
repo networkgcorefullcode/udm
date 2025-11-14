@@ -36,6 +36,7 @@ import (
 	"github.com/omec-project/udm/ueauthentication"
 	"github.com/omec-project/udm/uecontextmanagement"
 	"github.com/omec-project/udm/util"
+	"github.com/omec-project/udm/util/apiclient"
 	"github.com/omec-project/util/http2_util"
 	utilLogger "github.com/omec-project/util/logger"
 	"github.com/urfave/cli/v3"
@@ -147,6 +148,23 @@ func (udm *UDM) Start() {
 	uecontextmanagement.AddService(router)
 	subscribecallback.AddService(router)
 
+	// Init a gorutine to sincronize SSM functionality
+	if factory.UdmConfig.Configuration.Ssm.Enable {
+		serviceId, password, err := util.GetUserLogin()
+		if err != nil {
+			logger.AppLog.Errorf("Error getting SSM login credentials: %v", err)
+			return
+		}
+		if _, err = apiclient.LoginSSM(serviceId, password); err != nil {
+			logger.AppLog.Errorf("Error logging into SSM: %v", err)
+			return
+		}
+		logger.AppLog.Infoln("SSM login successful")
+		// ssmsync.SetCfgChannel(configMsgChan)
+		go HealthCheckSSM()
+		time.Sleep(time.Second * 5) // stop work to send the health check function
+	}
+
 	go metrics.InitMetrics()
 
 	self := udmContext.UDM_Self()
@@ -205,6 +223,7 @@ func (udm *UDM) Start() {
 	if err != nil {
 		logger.InitLog.Fatalf("HTTP server setup failed: %+v", err)
 	}
+
 }
 
 func (udm *UDM) Exec(c *cli.Command) error {

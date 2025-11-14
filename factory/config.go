@@ -67,6 +67,19 @@ type Ssm struct {
 	Enable       bool   `yaml:"enable"`
 	TLS_Insecure bool   `yaml:"tls_insecure"`
 	Host         string `yaml:"host"`
+	MTls            *TLS2     `yaml:"m-tls,omitempty"`
+	Login           *SSMLogin `yaml:"login,omitempty"` // use this config only for development purposes use environment variables in production
+}
+
+type TLS2 struct {
+	Crt string `yaml:"crt,omitempty"`
+	Key string `yaml:"key,omitempty"`
+	Ca  string `yaml:"ca,omitempty"`
+}
+
+type SSMLogin struct {
+	ServiceId string `yaml:"service-id,omitempty"`
+	Password  string `yaml:"password,omitempty"`
 }
 
 type Keys struct {

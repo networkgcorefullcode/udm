@@ -8,7 +8,6 @@ package producer
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/antihax/optional"
 	ssm_const "github.com/networkgcorefullcode/ssm/const"
-	ssm_models "github.com/networkgcorefullcode/ssm/models"
 	"github.com/omec-project/openapi"
 	"github.com/omec-project/openapi/Nudr_DataRepository"
 	"github.com/omec-project/openapi/models"
@@ -27,6 +25,7 @@ import (
 	"github.com/omec-project/udm/logger"
 	stats "github.com/omec-project/udm/metrics"
 	"github.com/omec-project/udm/util"
+	"github.com/omec-project/udm/util/apiclient"
 	"github.com/omec-project/util/httpwrapper"
 	"github.com/omec-project/util/milenage"
 	"github.com/omec-project/util/ueauth"
@@ -213,20 +212,13 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 		switch {
 		case udm_context.UDM_Self().SsmEnable:
-			// Si SSM está habilitado y hay una clave de encriptación, usamos el servicio SSM para desencriptar.
+			// If SSM is enabled and there is an encryption key, use the SSM service to decrypt.
 			logger.UeauLog.Debugln("EncryptionKey is present, calling SSM to decrypt PermanentKeyValue.")
 
-			// 1. Configurar el cliente SSM
-			ssmCfg := ssm_models.NewConfiguration()
-			ssmCfg.Servers = ssm_models.ServerConfigurations{
-				{
-					URL: udm_context.UDM_Self().SsmUri,
-				},
-			}
-			ssmCfg.HTTPClient = getHTTPClient(udm_context.UDM_Self().TLS_Insecure)
-			ssmClient := ssm_models.NewAPIClient(ssmCfg)
+			// 1. Configure the SSM client
+			ssmClient := apiclient.GetSSMAPIClient()
 
-			// 2. Preparar la petición de desencriptado
+			// 2. Prepare the decryption request
 			encryptionAlgorithm := int(authSubs.PermanentKey.EncryptionAlgorithm)
 			keyLabel, ok := ssm_const.AlgorithmLabelMap[encryptionAlgorithm]
 			if !ok {
@@ -241,37 +233,29 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 			keyId := authSubs.K4_SNO
 
-			decryptReq := ssm_models.DecryptRequest{
-				KeyLabel:            keyLabel,
-				Cipher:              encryptedKiHex,
-				EncryptionAlgorithm: int32(encryptionAlgorithm),
-				Id:                  int32(keyId),
-				Iv:                  authSubs.PermanentKey.IV,
-			}
+			// 3. Check if decrypt is AESGCM
+			if authSubs.PermanentKey.Tag != "" {
+				// Use AESGCM decryption
+				aad := fmt.Sprintf("%s-%d-%d", supi, authSubs.K4_SNO, authSubs.PermanentKey.EncryptionAlgorithm)
+				aadBytes := []byte(aad)                // Convertir a bytes
+				aadHex := hex.EncodeToString(aadBytes) // Codificar a hex
 
-			// 3. Ejecutar la llamada a la API del SSM
-			decryptedResp, _, decryptErr := ssmClient.EncryptionAPI.DecryptData(context.Background()).DecryptRequest(decryptReq).Execute()
-			if decryptErr != nil {
-				problemDetails = &models.ProblemDetails{
-					Status: http.StatusForbidden,
-					Cause:  authenticationRejected,
-					Detail: fmt.Sprintf("Failed to decrypt PermanentKey via SSM: %s", decryptErr.Error()),
-				}
-				logger.UeauLog.Errorf("SSM decryption failed: %+v", decryptErr)
+				kStr, problemDetails = keydecrypt.DecryptSSMAESGCM(authSubs.PermanentKey.PermanentKeyValue, authSubs.PermanentKey.IV, authSubs.PermanentKey.Tag, aadHex, keyLabel, int32(keyId), ssmClient)
+			} else {
+				// Use standard decryption
+				kStr, problemDetails = keydecrypt.DecryptSSM(authSubs.PermanentKey.PermanentKeyValue, authSubs.PermanentKey.IV, keyLabel, int32(encryptionAlgorithm), int32(keyId), ssmClient)
+			}
+			if problemDetails != nil {
 				return nil, problemDetails
 			}
 
-			// 4. Procesar la respuesta del SSM
-			// La respuesta 'Plain' del SSM está en formato hexadecimal.
-			kStr = decryptedResp.Plain
-
 		case encryptionKeyHex == "" && authSubs.PermanentKey.EncryptionAlgorithm == 0:
-			// Si no hay clave de encriptación, asumimos que la clave permanente no está encriptada.
+			// If there is no encryption key, we assume that the permanent key is not encrypted.
 			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")
 			kStr = encryptedKiHex
 
 		default:
-			// Si SSM no está habilitado pero hay una clave de encriptación, procedemos a desencriptar localmente.
+			// If SSM is not enabled but there is an encryption key, proceed to decrypt locally.
 			logger.UeauLog.Debugln("EncryptionKey is present, decrypting PermanentKeyValue locally.")
 			decryptedKiHex, decryptErr := keydecrypt.DecryptKi(encryptedKiHex, encryptionKeyHex)
 			if decryptErr != nil {
@@ -625,19 +609,4 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	response.AuthenticationVector = &av
 	response.Supi = supi
 	return response, nil
-}
-
-func getHTTPClient(tlsInsecure bool) *http.Client {
-	if tlsInsecure {
-		// Create client with insecure TLS configuration
-		return &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
-		}
-	}
-	// Return default HTTP client for secure connections
-	return &http.Client{}
 }
