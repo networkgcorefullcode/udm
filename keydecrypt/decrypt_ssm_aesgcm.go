@@ -1,13 +1,13 @@
 package keydecrypt
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
 	ssm_models "github.com/networkgcorefullcode/ssm/models"
 	"github.com/omec-project/openapi/models"
 	"github.com/omec-project/udm/logger"
+	"github.com/omec-project/udm/util/apiclient"
 )
 
 const (
@@ -25,7 +25,7 @@ func DecryptSSMAESGCM(encryptedData, iv, tag, aad, keyLabel string, id int32, ss
 	}
 
 	// 3. Execute the SSM API call
-	decryptedResp, _, decryptErr := ssmClient.EncryptionAPI.DecryptDataAESGCM(context.Background()).DecryptAESGCMRequest(decryptReq).Execute()
+	decryptedResp, _, decryptErr := ssmClient.EncryptionAPI.DecryptDataAESGCM(apiclient.AuthContext).DecryptAESGCMRequest(decryptReq).Execute()
 	if decryptErr != nil {
 		problemDetails := &models.ProblemDetails{
 			Status: http.StatusForbidden,

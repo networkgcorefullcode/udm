@@ -21,14 +21,14 @@ func GetSSMAPIClient() *ssm.APIClient {
 		return apiClient
 	}
 
-	logger.AppLog.Infof("Creating new Ssm API client for URI: %s", factory.UdmConfig.Configuration.Ssm.Host)
+	logger.UeauLog.Infof("Creating new Ssm API client for URI: %s", factory.UdmConfig.Configuration.Ssm.Host)
 
 	configuration := ssm.NewConfiguration()
 	configuration.Servers[0].URL = factory.UdmConfig.Configuration.Ssm.Host
 	configuration.HTTPClient = GetHTTPClient(factory.UdmConfig.Configuration.Ssm.TLS_Insecure)
 
 	if factory.UdmConfig.Configuration.Ssm.MTls != nil {
-		logger.AppLog.Infof("Configuring mTLS for Ssm client")
+		logger.UeauLog.Infof("Configuring mTLS for Ssm client")
 
 		// 1️⃣ Load client certificate for mTLS
 		logger.AppLog.Debugf("Loading client certificate from: %s", factory.UdmConfig.Configuration.Ssm.MTls.Crt)
@@ -38,7 +38,7 @@ func GetSSMAPIClient() *ssm.APIClient {
 			fmt.Fprintf(os.Stderr, "Error loading client certificate: %v\n", err)
 			return nil
 		}
-		logger.AppLog.Infof("Client certificate loaded successfully")
+		logger.UeauLog.Infof("Client certificate loaded successfully")
 
 		// 2️⃣ Load root certificate (CA) that signed the server
 		logger.AppLog.Debugf("Loading CA certificate from: %s", factory.UdmConfig.Configuration.Ssm.MTls.Ca)
@@ -51,7 +51,7 @@ func GetSSMAPIClient() *ssm.APIClient {
 
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-		logger.AppLog.Infof("CA certificate loaded successfully")
+		logger.UeauLog.Infof("CA certificate loaded successfully")
 
 		// 3️⃣ Configure TLS
 		tlsConfig := &tls.Config{
@@ -72,13 +72,13 @@ func GetSSMAPIClient() *ssm.APIClient {
 
 		// 5️⃣ Configure the OpenAPI client to use this HTTP client
 		configuration.HTTPClient = httpClient
-		logger.AppLog.Infof("mTLS HTTP client configured successfully")
+		logger.UeauLog.Infof("mTLS HTTP client configured successfully")
 	} else {
-		logger.AppLog.Infof("mTLS not configured, using default HTTP client")
+		logger.UeauLog.Infof("mTLS not configured, using default HTTP client")
 	}
 
 	apiClient = ssm.NewAPIClient(configuration)
-	logger.AppLog.Infof("Ssm API client created successfully")
+	logger.UeauLog.Infof("Ssm API client created successfully")
 
 	return apiClient
 }

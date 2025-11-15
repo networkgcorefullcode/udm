@@ -244,13 +244,9 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			keyId := authSubs.K4_SNO
 
 			// 3. Check if decrypt is AESGCM
-			if authSubs.PermanentKey.Tag != "" {
-				// Use AESGCM decryption
-				aad := fmt.Sprintf("%s-%d-%d", supi, authSubs.K4_SNO, authSubs.PermanentKey.EncryptionAlgorithm)
-				aadBytes := []byte(aad)                // Convertir a bytes
-				aadHex := hex.EncodeToString(aadBytes) // Codificar a hex
+			if authSubs.PermanentKey.Tag != "" && authSubs.PermanentKey.IV != "" && authSubs.PermanentKey.Aad != "" {
 
-				kStr, problemDetails = keydecrypt.DecryptSSMAESGCM(authSubs.PermanentKey.PermanentKeyValue, authSubs.PermanentKey.IV, authSubs.PermanentKey.Tag, aadHex, keyLabel, int32(keyId), ssmClient)
+				kStr, problemDetails = keydecrypt.DecryptSSMAESGCM(authSubs.PermanentKey.PermanentKeyValue, authSubs.PermanentKey.IV, authSubs.PermanentKey.Tag, authSubs.PermanentKey.Aad, keyLabel, int32(keyId), ssmClient)
 			} else {
 				// Use standard decryption
 				kStr, problemDetails = keydecrypt.DecryptSSM(authSubs.PermanentKey.PermanentKeyValue, authSubs.PermanentKey.IV, keyLabel, int32(encryptionAlgorithm), int32(keyId), ssmClient)
