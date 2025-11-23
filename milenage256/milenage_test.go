@@ -19,13 +19,11 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 
 	// Valores esperados (Output)
 	wantOPc := "b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6"
-	wantMacS := "a2f062a6ee181e24"
 	wantMacA := "9c79c4a45b771187"
 	wantRes := "aedd7ff35e1375f6"
 	wantCk := "b7cb9b55d17bd311b64da411f6513ea5f1fff5795bfd91a5d463f18704c26178"
 	wantIk := "7f095b8fd8f7e501ff52d8994d294e9368f02e2db0d61adb15ae695809fcf482"
 	wantAk := "fccd9c204f14"
-	wantAkS := "ac87e03428b2"
 
 	// Decodificar inputs
 	key, _ := hex.DecodeString(keyHex)
@@ -62,16 +60,15 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 			}
 
 			// 2. Generar Vectores
-			macA, macS, res, ck, ik, ak, akStar := milenage256.GenerateAuthenticationVectors(config, key, rand, sqn, amf)
+			macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(config, key, rand, sqn, amf)
 
 			// Comparar resultados
 			check(t, id, "MAC-A", macA, wantMacA)
-			check(t, id, "MAC-S", macS, wantMacS)
 			check(t, id, "RES", res, wantRes)
 			check(t, id, "CK", ck, wantCk)
 			check(t, id, "IK", ik, wantIk)
 			check(t, id, "AK", ak, wantAk)
-			check(t, id, "AK*", akStar, wantAkS)
+
 		}(i)
 	}
 
@@ -101,7 +98,7 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	cfg.AkSize = 6
 
 	opc := milenage256.ComputeOPc(cfg, key)
-	macA, _, res, ck, ik, ak, _ := milenage256.GenerateAuthenticationVectors(cfg, key, rand, sqn, amf)
+	macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(cfg, key, rand, sqn, amf)
 
 	fmt.Printf("=== Resultados Single Run ===\n")
 	fmt.Printf("OPc: %x\n", opc)
@@ -110,4 +107,17 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	fmt.Printf("CK: %x\n", ck)
 	fmt.Printf("IK: %x\n", ik)
 	fmt.Printf("AK: %x\n", ak)
+
+	// 1. Definir la red (Ejemplo: MCC=234, MNC=15)
+	snn := milenage256.BuildSNN("234", "15")
+	// snn será: "5G:mnc015.mcc234.3gppnetwork.org"
+
+	// 2. Generar el vector 5G final
+	av5g := milenage256.Generate5GHEAV(cfg, rand, sqn, amf, macA, res, ck, ik, ak, snn)
+
+	fmt.Printf("5G AV Generado:\n")
+	fmt.Printf("RAND: %x\n", av5g.Rand)
+	fmt.Printf("AUTN: %x\n", av5g.Autn)
+	fmt.Printf("XRES*: %x\n", av5g.XresStar)
+	fmt.Printf("KAUSF: %x\n", av5g.Kausf)
 }
