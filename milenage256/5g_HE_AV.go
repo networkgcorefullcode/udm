@@ -7,14 +7,6 @@ import (
 	"fmt"
 )
 
-// AuthVector5G representa un Vector de Autenticación 5G HE AV completo.
-type AuthVector5G struct {
-	Rand     []byte // Random Challenge
-	Autn     []byte // Authentication Token (SQN^AK || AMF || MAC-A)
-	XresStar []byte // Expected Response 5G (XRES*)
-	Kausf    []byte // Key for AUSF
-}
-
 // BuildSNN construye el "Serving Network Name" para una red PLMN estándar.
 // Referencia: TS 33.501, Table 9.12.1.1
 // Ejemplo: "5G:mnc015.mcc234.3gppnetwork.org"
@@ -41,7 +33,7 @@ func BuildSNN(mcc, mnc string) string {
 //
 // Retorna:
 //   - av: Estructura con RAND, AUTN, XRES* y KAUSF.
-func Generate5GHEAV(cfg Config, rand, sqn, amf, macA, res, ck, ik, ak []byte, snn string) AuthVector5G {
+func Generate5GHEAV(cfg Config, rand, sqn, amf, macA, res, ck, ik, ak []byte, snn string) (autn, xresStar, kausf []byte) {
 
 	// ----------------------------------------------------------------
 	// Paso 3: Construcción del AUTN
@@ -66,7 +58,7 @@ func Generate5GHEAV(cfg Config, rand, sqn, amf, macA, res, ck, ik, ak []byte, sn
 
 	// 3.b. Concatenar para formar AUTN
 	// Tamaño total = SqnSize + len(AMF) + MacSize
-	autn := make([]byte, 0, int(cfg.SqnSize)+len(amf)+int(cfg.MacSize))
+	autn = make([]byte, 0, int(cfg.SqnSize)+len(amf)+int(cfg.MacSize))
 	autn = append(autn, sqnXorAk...)
 	autn = append(autn, amf...)
 	autn = append(autn, macA...)
@@ -105,12 +97,7 @@ func Generate5GHEAV(cfg Config, rand, sqn, amf, macA, res, ck, ik, ak []byte, sn
 	// Es decir, los últimos 16 bytes.
 	xResStar := xResStarRaw[len(xResStarRaw)-16:]
 
-	return AuthVector5G{
-		Rand:     rand,
-		Autn:     autn,
-		XresStar: xResStar,
-		Kausf:    kAusf,
-	}
+	return autn, xResStar, kAusf
 }
 
 // KDF implementa la función de derivación de claves genérica definida en TS 33.220.

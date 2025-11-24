@@ -110,11 +110,11 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	// snn será: "5G:mnc015.mcc234.3gppnetwork.org"
 
 	// 2. Generar el vector 5G final
-	av5g := milenage256.Generate5GHEAV(cfg, rand, sqn, amf, macA, res, ck, ik, ak, snn)
+	autn, xresStar, kausf := milenage256.Generate5GHEAV(cfg, rand, sqn, amf, macA, res, ck, ik, ak, snn)
 
 	fmt.Printf("5G AV Generado:\n")
-	fmt.Printf("RAND: %x\n", av5g.Rand)
-	fmt.Printf("AUTN: %x\n", av5g.Autn)
-	fmt.Printf("XRES*: %x\n", av5g.XresStar)
-	fmt.Printf("KAUSF: %x\n", av5g.Kausf)
+	fmt.Printf("RAND: %x\n", rand)
+	fmt.Printf("AUTN: %x\n", autn)
+	fmt.Printf("XRES*: %x\n", xresStar)
+	fmt.Printf("KAUSF: %x\n", kausf)
 }
