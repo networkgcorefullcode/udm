@@ -12,7 +12,6 @@ import (
 func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 	// --- DATOS DEL TEST CASE #4d ---
 	keyHex := "aff1951a2a5149caf59d9e5fc5c5995473536ba65a41f744010e8fc1fa11fe4d"
-	opHex := "3d5f059e24d37533f7dd09a1745afdc256229951c0ddb459df1977edcc9a631a" // Corregido (sin el 5 extra)
 	randHex := "090ccce38904bdc40c509b2342f13522"
 	sqnHex := "dc1498b4d7bd"
 	amfHex := "93d7"
@@ -27,7 +26,6 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 
 	// Decodificar inputs
 	key, _ := hex.DecodeString(keyHex)
-	op, _ := hex.DecodeString(opHex)
 	rand, _ := hex.DecodeString(randHex)
 	sqn, _ := hex.DecodeString(sqnHex)
 	amf, _ := hex.DecodeString(amfHex)
@@ -35,7 +33,6 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 
 	// Configurar parámetros
 	config := milenage256.DefaultConfig()
-	copy(config.OP[:], op)
 	// Ajustes específicos del Caso 4d
 	config.ResSize = 8
 	config.MacSize = 8
@@ -87,14 +84,13 @@ func check(t *testing.T, id int, name string, got []byte, wantHex string) {
 // Test simple para ver solo los valores (como tu ejemplo anterior)
 func TestMilenage256_SingleRun(t *testing.T) {
 	key, _ := hex.DecodeString("aff1951a2a5149caf59d9e5fc5c5995473536ba65a41f744010e8fc1fa11fe4d")
-	op, _ := hex.DecodeString("3d5f059e24d37533f7dd09a1745afdc256229951c0ddb459df1977edcc9a631a")
 	rand, _ := hex.DecodeString("090ccce38904bdc40c509b2342f13522")
 	sqn, _ := hex.DecodeString("dc1498b4d7bd")
 	amf, _ := hex.DecodeString("93d7")
 	opc, _ := hex.DecodeString("b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6")
 
 	cfg := milenage256.DefaultConfig()
-	copy(cfg.OP[:], op)
+
 	cfg.ResSize = 8
 	cfg.MacSize = 8
 	cfg.AkSize = 6

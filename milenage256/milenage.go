@@ -23,7 +23,6 @@ type Config struct {
 	RandSize uint8
 	SqnSize  uint8
 	AkSize   uint8
-	OP       [32]byte
 	C        [8][16]byte
 }
 
@@ -60,12 +59,6 @@ func configToCtx(cfg Config) C.MilenageCtx {
 	ctx.SQN_sz = C.u8(cfg.SqnSize)
 	ctx.AK_sz = C.u8(cfg.AkSize)
 
-	// Copiar OP
-	cOP := (*[32]C.u8)(unsafe.Pointer(&ctx.OP))
-	for i, v := range cfg.OP {
-		cOP[i] = C.u8(v)
-	}
-
 	// Copiar matriz C de personalización
 	cC := (*[8][16]C.u8)(unsafe.Pointer(&ctx.c))
 	for i := 0; i < 8; i++ {
@@ -79,9 +72,13 @@ func configToCtx(cfg Config) C.MilenageCtx {
 
 // ComputeOPc calcula el OPc a partir de OP y Key.
 // Es seguro para concurrencia (crea su propio contexto C local).
-func ComputeOPc(cfg Config, key []byte) [32]byte {
+func ComputeOPc(cfg Config, key, op []byte) [32]byte {
 	// Crear contexto local en C
 	ctx := configToCtx(cfg)
+	cOP := (*[32]C.u8)(unsafe.Pointer(&ctx.OP))
+	for i, v := range op {
+		cOP[i] = C.u8(v)
+	}
 
 	cKey := (*C.u8)(unsafe.Pointer(&key[0]))
 
