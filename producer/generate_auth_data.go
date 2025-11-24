@@ -24,6 +24,7 @@ import (
 	"github.com/omec-project/udm/keydecrypt"
 	"github.com/omec-project/udm/logger"
 	stats "github.com/omec-project/udm/metrics"
+	"github.com/omec-project/udm/milenage256"
 	"github.com/omec-project/udm/service/health"
 	"github.com/omec-project/udm/util"
 	"github.com/omec-project/udm/util/apiclient"
@@ -277,7 +278,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 		}
 
 		if len(kStr) == keyStrLen {
-			k, err = hex.DecodeString(kStr)
+			k, err = hex.DecodeString(kStr) // aqui quiero que rectifiques si tambien si el tamano es de 64 caracteres hexagesimales que serian los 32 bytes que tendria una llave ki  para milenage 256 o sea puede ser de 32 caracteres hex para milenage clasico 128 o 64
 			if err != nil {
 				logger.UeauLog.Errorln("err", err)
 			} else {
@@ -305,7 +306,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	if authSubs.Milenage != nil {
 		if authSubs.Milenage.Op != nil {
 			opStr = authSubs.Milenage.Op.OpValue
-			if len(opStr) == opStrLen {
+			if len(opStr) == opStrLen { // aqui igual la llave op puede tener 64 caracteres hex o lo q es lo mismo 32 bytes
 				op, err = hex.DecodeString(opStr)
 				if err != nil {
 					logger.UeauLog.Errorln("err", err)
@@ -330,7 +331,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 	if authSubs.Opc != nil && authSubs.Opc.OpcValue != "" {
 		opcStr = authSubs.Opc.OpcValue
-		if len(opcStr) == opcStrLen {
+		if len(opcStr) == opcStrLen { // aqui tb lo mismo de los tamanos o sea puede ser de 32 o 64
 			opc, err = hex.DecodeString(opcStr)
 			if err != nil {
 				logger.UeauLog.Errorln("err", err)
@@ -355,9 +356,17 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 
 	if !hasOPC {
 		if hasK && hasOP {
-			opc, err = milenage.GenerateOPC(k, op)
-			if err != nil {
-				logger.UeauLog.Errorln("milenage GenerateOPC err", err)
+			if len(k) == 32 {
+				// Milenage256: Compute OPc using 256-bit logic
+				cfg := milenage256.DefaultConfig()
+				opcArray := milenage256.ComputeOPc(cfg, k, op)
+				opc = opcArray[:]
+			} else {
+				// Standard Milenage
+				opc, err = milenage.GenerateOPC(k, op)
+				if err != nil {
+					logger.UeauLog.Errorln("milenage GenerateOPC err", err)
+				}
 			}
 		} else {
 			problemDetails = &models.ProblemDetails{
@@ -369,8 +378,17 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			return nil, problemDetails
 		}
 	}
+	// Check if using Milenage256 based on key size
+	isMilenage256 := len(k) == 32
+	sqnSize := 12 // Default hex length for SQN (6 bytes)
+	if isMilenage256 {
+		// In Milenage256, SQN is also 6 bytes, so hex length is 12.
+		// If config changes, we might need to adjust, but DefaultConfig says 6 bytes.
+		cfg := milenage256.DefaultConfig() // hay varias veces repetido en el codigo cfg := milenage256.DefaultConfig() rectificar luego si se puede optimizar
+		sqnSize = int(cfg.SqnSize) * 2
+	}
 
-	sqnStr := strictHex(authSubs.SequenceNumber, 12)
+	sqnStr := strictHex(authSubs.SequenceNumber, sqnSize)
 	logger.UeauLog.Debugln("sqnStr", sqnStr)
 	sqn, err := hex.DecodeString(sqnStr)
 	if err != nil {
@@ -385,7 +403,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	}
 
 	logger.UeauLog.Debugln("sqn", sqn)
-
+	// aqui con rand lo mismo con el tamano que con el sqn
 	RAND := make([]byte, 16)
 	_, err = rand.Read(RAND)
 	if err != nil {
@@ -398,7 +416,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 		logger.UeauLog.Errorln("err", err)
 		return nil, problemDetails
 	}
-
+	//el amf dejale este valor para ambos o sea tb para milenage 256
 	AMF, err := hex.DecodeString("8000")
 	if err != nil {
 		problemDetails = &models.ProblemDetails{
@@ -436,9 +454,28 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			logger.UeauLog.Errorln("err", deCodeErr)
 			return nil, problemDetails
 		}
-
-		SQNms, macS := aucSQN(opc, k, Auts, randHex)
-		if reflect.DeepEqual(macS, Auts[6:]) {
+		// Resynchronization logic
+		var SQNms, macS []byte
+		if isMilenage256 {
+			cfg := milenage256.DefaultConfig()
+			// Use f5* (standard) by default, set last param to false.
+			// If f5** is needed, it should be configurable, but standard is f5*.
+			SQNms, err = milenage256.Resynchronize(cfg, k, opc, randHex, Auts, false)
+			if err != nil {
+				logger.UeauLog.Errorln("Milenage256 Resynchronize err", err)
+				// If MAC verification fails in Resynchronize, it returns error.
+				// We treat it as MAC failure.
+			} else {
+				// Extract macS from Auts for logging/comparison if needed,
+				// but Resynchronize already verified it.
+				// Auts = Conc(SQN_MS) || MAC-S
+				macS = Auts[cfg.SqnSize:]
+			}
+		} else {
+			SQNms, macS = aucSQN(opc, k, Auts, randHex)
+		}
+		// For Milenage256, err is set if MAC failed. For standard, we check manually.
+		if (isMilenage256 && err == nil) || (!isMilenage256 && reflect.DeepEqual(macS, Auts[6:])) {
 			_, err = rand.Read(RAND)
 			if err != nil {
 				problemDetails = &models.ProblemDetails{
@@ -452,7 +489,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 			}
 
 			// increment sqn authSubs.SequenceNumber
-			bigSQN := big.NewInt(0)
+			bigSQN := big.NewInt(0) // esta parte de aqui no la entiendo lo que hace me puedes explicar todo esto
 			sqnStr = hex.EncodeToString(SQNms)
 			logger.UeauLog.Infof("SQNstr %s", sqnStr)
 			bigSQN.SetString(sqnStr, 16)
@@ -478,7 +515,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	}
 
 	// increment sqn
-	bigSQN := big.NewInt(0)
+	bigSQN := big.NewInt(0) // esta parte tampoco la entiendo explicamela
 	sqn, err = hex.DecodeString(sqnStr)
 	if err != nil {
 		problemDetails = &models.ProblemDetails{
@@ -531,19 +568,40 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	RES := make([]byte, 8)
 	AK, AKstar := make([]byte, 6), make([]byte, 6)
 
-	// Generate macA, macS
-	err = milenage.F1(opc, k, RAND, sqn, AMF, macA, macS)
-	if err != nil {
-		logger.UeauLog.Errorln("milenage F1 err ", err)
-	}
+	if isMilenage256 {
+		cfg := milenage256.DefaultConfig()
+		// GenerateAuthenticationVectors returns (macA, res, ck, ik, ak)
+		// Note: GenerateAuthenticationVectors in milenage256.go does not return AKstar or macS (f1*).
+		// Standard flow (AV generation) uses f1, f2, f3, f4, f5.
+		var mMacA, mRes, mCk, mIk, mAk []byte
+		mMacA, mRes, mCk, mIk, mAk = milenage256.GenerateAuthenticationVectors(cfg, k, opc, RAND, sqn, AMF)
 
-	// Generate RES, CK, IK, AK, AKstar
-	// RES == XRES (expected RES) for server
-	err = milenage.F2345(opc, k, RAND, RES, CK, IK, AK, AKstar)
-	if err != nil {
-		logger.UeauLog.Errorln("milenage F2345 err", err)
-	}
+		copy(macA, mMacA) //aqui en esta parte ver si se puede copiar directo saliendo de la funcion a las variableso ver que pasa si no coinciden las longitudes y las capacidades del slice
+		copy(RES, mRes)
+		copy(CK, mCk)
+		copy(IK, mIk)
+		copy(AK, mAk)
+		// AKstar is not generated by GenerateAuthenticationVectors, but it's only needed for resync (f5*).
+		// Here we are generating AV, so AKstar is not strictly needed for the vector itself
+		// unless we are doing EAP-AKA' or 5G AKA derivation that might depend on it?
+		// Actually 5G AKA uses CK, IK.
+		// EAP-AKA' uses CK', IK'.
+		// Neither seems to use AKstar directly in the AV response.
+	} else {
+		// Generate macA, macS
+		err = milenage.F1(opc, k, RAND, sqn, AMF, macA, macS)
+		if err != nil {
+			logger.UeauLog.Errorln("milenage F1 err ", err)
+		}
 
+		// Generate RES, CK, IK, AK, AKstar
+		// RES == XRES (expected RES) for server
+		err = milenage.F2345(opc, k, RAND, RES, CK, IK, AK, AKstar)
+		if err != nil {
+			logger.UeauLog.Errorln("milenage F2345 err", err)
+		}
+	}
+	//aqui habria que valorar si llamar a milenage256.Generate5GHEAV en caso de usarse milenage256 que devuelve  autn, xResStar, kAusf o si es compatible usar el mismo codigo que esta aqui debajo solo que cambiando el size de este SQNxorAK := make([]byte, 6) por el correspondiente segun el tamano que tenga el sqn en la configuracion de milenage256.defaultconfig
 	// Generate AUTN
 	SQNxorAK := make([]byte, 6)
 	for i := 0; i < len(sqn); i++ {
