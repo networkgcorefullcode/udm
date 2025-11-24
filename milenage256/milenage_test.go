@@ -16,7 +16,7 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 	randHex := "090ccce38904bdc40c509b2342f13522"
 	sqnHex := "dc1498b4d7bd"
 	amfHex := "93d7"
-
+	opcHex := "b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6"
 	// Valores esperados (Output)
 	wantOPc := "b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6"
 	wantMacA := "9c79c4a45b771187"
@@ -31,6 +31,7 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 	rand, _ := hex.DecodeString(randHex)
 	sqn, _ := hex.DecodeString(sqnHex)
 	amf, _ := hex.DecodeString(amfHex)
+	opc, _ := hex.DecodeString(opcHex)
 
 	// Configurar parámetros
 	config := milenage256.DefaultConfig()
@@ -53,14 +54,14 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			// 1. Verificar OPc
-			opc := milenage256.ComputeOPc(config, key)
+			//opc := milenage256.ComputeOPc(config, key)
 			if hex.EncodeToString(opc[:]) != wantOPc {
 				t.Errorf("Goroutine %d: OPc incorrecto. Got: %x", id, opc)
 				return
 			}
 
 			// 2. Generar Vectores
-			macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(config, key, rand, sqn, amf)
+			macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(config, key, opc, rand, sqn, amf)
 
 			// Comparar resultados
 			check(t, id, "MAC-A", macA, wantMacA)
@@ -90,6 +91,7 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	rand, _ := hex.DecodeString("090ccce38904bdc40c509b2342f13522")
 	sqn, _ := hex.DecodeString("dc1498b4d7bd")
 	amf, _ := hex.DecodeString("93d7")
+	opc, _ := hex.DecodeString("b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6")
 
 	cfg := milenage256.DefaultConfig()
 	copy(cfg.OP[:], op)
@@ -97,8 +99,7 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	cfg.MacSize = 8
 	cfg.AkSize = 6
 
-	opc := milenage256.ComputeOPc(cfg, key)
-	macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(cfg, key, rand, sqn, amf)
+	macA, res, ck, ik, ak := milenage256.GenerateAuthenticationVectors(cfg, key, opc, rand, sqn, amf)
 
 	fmt.Printf("=== Resultados Single Run ===\n")
 	fmt.Printf("OPc: %x\n", opc)

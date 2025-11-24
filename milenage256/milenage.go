@@ -100,18 +100,30 @@ func ComputeOPc(cfg Config, key []byte) [32]byte {
 // GenerateAuthenticationVectors calcula los valores AKA estándar (MAC-A, RES, CK, IK, AK).
 // Esta función se usa en el flujo normal de autenticación (generación de AV).
 // Se han eliminado f1* (MAC-S) y f5* (AK*) ya que pertenecen al flujo de resincronización.
-func GenerateAuthenticationVectors(cfg Config, key, rand, sqn, amf []byte) (macA, res, ck, ik, ak []byte) {
-	// 1. Crear contexto C local (aislado para este hilo)
+// GenerateAuthenticationVectors calcula los valores AKA estándar (MAC-A, RES, CK, IK, AK).
+// OPTIMIZACIÓN: Recibe 'opc' pre-calculado para evitar carga de CPU en el UDM.
+func GenerateAuthenticationVectors(cfg Config, key, opc, rand, sqn, amf []byte) (macA, res, ck, ik, ak []byte) {
+	// Validar longitud de OPc para evitar corrupción de memoria en C
+	if len(opc) != 32 {
+		// En producción podrías retornar error, aquí panic o manejo silencioso según diseño
+		panic("GenerateAuthenticationVectors: OPc debe tener 32 bytes")
+	}
+
+	// 1. Crear contexto C local (thread-safe)
 	ctx := configToCtx(cfg)
+
+	// 2. Inyectar OPc directamente en el contexto C
+	// Esto evita llamar a ComputeTOPC y ahorra ciclos de CPU.
+	cOPc := (*[32]C.u8)(unsafe.Pointer(&ctx.OPc))
+	for i, v := range opc {
+		cOPc[i] = C.u8(v)
+	}
 
 	// Punteros a datos de entrada
 	cKey := (*C.u8)(unsafe.Pointer(&key[0]))
 	cRand := (*C.u8)(unsafe.Pointer(&rand[0]))
 	cSqn := (*C.u8)(unsafe.Pointer(&sqn[0]))
 	cAmf := (*C.u8)(unsafe.Pointer(&amf[0]))
-
-	// 2. Calcular OPc dentro de este contexto
-	C.Milenage256_ComputeTOPC(&ctx, cKey)
 
 	// 3. Preparar buffers de salida
 	macA = make([]byte, cfg.MacSize)
@@ -120,21 +132,21 @@ func GenerateAuthenticationVectors(cfg Config, key, rand, sqn, amf []byte) (macA
 	ik = make([]byte, cfg.IkSize)
 	ak = make([]byte, cfg.AkSize)
 
-	// 4. Llamadas a las funciones C (Solo flujo estándar)
+	// 4. Llamadas a las funciones C (Solo flujo estándar f1-f5)
 
-	// f1 (MAC-A) - Autenticación de red
+	// f1 (MAC-A)
 	C.Milenage256_f1(&ctx, cKey, cRand, cSqn, cAmf, (*C.u8)(unsafe.Pointer(&macA[0])))
 
-	// f2 (RES) - Respuesta esperada del usuario
+	// f2 (RES)
 	C.Milenage256_f2(&ctx, cKey, cRand, (*C.u8)(unsafe.Pointer(&res[0])))
 
-	// f3 (CK) - Cipher Key
+	// f3 (CK)
 	C.Milenage256_f3(&ctx, cKey, cRand, (*C.u8)(unsafe.Pointer(&ck[0])))
 
-	// f4 (IK) - Integrity Key
+	// f4 (IK)
 	C.Milenage256_f4(&ctx, cKey, cRand, (*C.u8)(unsafe.Pointer(&ik[0])))
 
-	// f5 (AK) - Anonymity Key para ocultar SQN
+	// f5 (AK)
 	C.Milenage256_f5(&ctx, cKey, cRand, (*C.u8)(unsafe.Pointer(&ak[0])))
 
 	return
@@ -153,38 +165,40 @@ func GenerateAuthenticationVectors(cfg Config, key, rand, sqn, amf []byte) (macA
 // Retorna:
 //   - sqnMs: El SQN recuperado del UE si la verificación MAC es correcta.
 //   - err: Error si el AUTS es inválido o el MAC no coincide.
-func Resynchronize(cfg Config, key, rand, auts []byte, useF5StarStar bool) (sqnMs []byte, err error) {
+//
+// OPTIMIZACIÓN: Recibe 'opc' pre-calculado.
+func Resynchronize(cfg Config, key, opc, rand, auts []byte, useF5StarStar bool) (sqnMs []byte, err error) {
+	if len(opc) != 32 {
+		return nil, errors.New("OPc debe tener 32 bytes")
+	}
+
 	// Verificar tamaño mínimo del AUTS
-	// AUTS = SQN_MS_xor_AK* (SqnSize) || MAC-S (MacSize)
-	// Nota: Usamos los tamaños definidos en cfg (ej. 6 bytes para SQN, 8 para MAC),
-	// asumiendo que el UE usa los mismos parámetros. Esto es estándar en 3GPP.
 	expectedAutsLen := int(cfg.SqnSize) + int(cfg.MacSize)
 	if len(auts) != expectedAutsLen {
 		return nil, fmt.Errorf("longitud de AUTS inválida: got %d, want %d", len(auts), expectedAutsLen)
 	}
 
 	// 1. Extraer partes del AUTS
-	// La primera parte es el SQN oculto: (SQN_MS ^ AK*)
 	sqnXorAk := auts[:cfg.SqnSize]
-	// La segunda parte es el MAC-S calculado por el UE
 	macS_fromUE := auts[cfg.SqnSize:]
 
-	// 2. Preparar contexto C
+	// 2. Preparar contexto C e inyectar OPc
 	ctx := configToCtx(cfg)
+
+	cOPc := (*[32]C.u8)(unsafe.Pointer(&ctx.OPc))
+	for i, v := range opc {
+		cOPc[i] = C.u8(v)
+	}
+
 	cKey := (*C.u8)(unsafe.Pointer(&key[0]))
 	cRand := (*C.u8)(unsafe.Pointer(&rand[0]))
 
-	// Calcular OPc necesario para f5* y f1*
-	C.Milenage256_ComputeTOPC(&ctx, cKey)
-
 	// 3. Generar AK* (Anonymity Key para resync)
-	// Paso 1 del estándar (o variante con f5**)
 	akStar := make([]byte, cfg.AkSize)
 	cAkStar := (*C.u8)(unsafe.Pointer(&akStar[0]))
 
 	if useF5StarStar {
-		// Opción f5**: Usa RAND y MAC-S como entrada para mayor protección
-		// Nota: MAC-S se pasa a f5** según TS 35.234
+		// Opción f5**: Usa RAND y MAC-S
 		cMacS := (*C.u8)(unsafe.Pointer(&macS_fromUE[0]))
 		C.Milenage256_f5ss(&ctx, cKey, cRand, cMacS, cAkStar)
 	} else {
@@ -192,27 +206,22 @@ func Resynchronize(cfg Config, key, rand, auts []byte, useF5StarStar bool) (sqnM
 		C.Milenage256_f5s(&ctx, cKey, cRand, cAkStar)
 	}
 
-	// 4. Recuperar SQN_MS
-	// Paso 2: SQN_MS = (SQN_MS ^ AK*) ^ AK*
+	// 4. Recuperar SQN_MS (Desencriptar)
 	sqnMs = make([]byte, cfg.SqnSize)
-	// XOR byte a byte. Nota: Asumimos que AkSize == SqnSize (generalmente 6 bytes ambos)
-	// Si fueran diferentes, el estándar dice que AK se trunca o rellena, pero en Milenage
-	// suelen configurarse iguales. Usamos el mínimo de ambos para el bucle seguro.
+	copy(sqnMs, sqnXorAk)
+
 	xorLen := int(cfg.SqnSize)
 	if int(cfg.AkSize) < xorLen {
 		xorLen = int(cfg.AkSize)
 	}
 
 	for i := 0; i < xorLen; i++ {
-		sqnMs[i] = sqnXorAk[i] ^ akStar[i]
+		sqnMs[i] = sqnMs[i] ^ akStar[i]
 	}
 
 	// 5. Calcular XMAC-S (MAC Esperado)
 	// Paso 3: f1* usa RAND, el SQN_MS recuperado y AMF=00..00
-
-	// Crear un AMF de ceros (tamaño 2 bytes es estándar en 3GPP para f1*)
 	zeroAmf := make([]byte, 2)
-
 	xMacS := make([]byte, cfg.MacSize)
 
 	cSqnMs := (*C.u8)(unsafe.Pointer(&sqnMs[0]))
@@ -222,11 +231,9 @@ func Resynchronize(cfg Config, key, rand, auts []byte, useF5StarStar bool) (sqnM
 	C.Milenage256_f1s(&ctx, cKey, cRand, cSqnMs, cZeroAmf, cXMacS)
 
 	// 6. Verificar MAC
-	// Paso 4: Comparar MAC-S del AUTS con XMAC-S calculado
 	if !bytes.Equal(macS_fromUE, xMacS) {
 		return nil, errors.New("fallo de verificación MAC-S: resincronización inválida")
 	}
 
-	// Si llegamos aquí, el SQN es auténtico
 	return sqnMs, nil
 }
