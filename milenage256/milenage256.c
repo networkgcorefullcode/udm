@@ -21,24 +21,6 @@ typedef struct {
     u8 AK_sz;
 } MilenageCtx;
 
-// Función auxiliar para inicializar con valores por defecto
-void Milenage256_InitDefault(MilenageCtx *ctx) {
-    memset(ctx, 0, sizeof(MilenageCtx));
-    ctx->KEY_sz  = 32;
-    ctx->RES_sz  = 8;
-    ctx->CK_sz   = 32;
-    ctx->IK_sz   = 32;
-    ctx->MAC_sz  = 16;
-    ctx->RAND_sz = 16;
-    ctx->SQN_sz  = 6;
-    ctx->AK_sz   = 6;
-    
-    // Inicializar c[i][15] según el estándar
-    for(int i=0; i<8; i++) {
-        ctx->c[i][15] = (i == 0) ? 0 : (1 << (i - 1));
-    }
-}
-
 // La función Main ahora recibe el contexto
 void Milenage256_Main(
     MilenageCtx *ctx,   // <--- NUEVO ARGUMENTO

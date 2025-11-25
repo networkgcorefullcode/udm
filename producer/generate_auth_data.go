@@ -468,11 +468,6 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				logger.UeauLog.Errorln("Milenage256 Resynchronize err", err)
 				// If MAC verification fails in Resynchronize, it returns error.
 				// We treat it as MAC failure.
-			} else {
-				// Extract macS from Auts for logging/comparison if needed,
-				// but Resynchronize already verified it.
-				// Auts = Conc(SQN_MS) || MAC-S
-				macS = Auts[cfg.SqnSize:]
 			}
 		} else {
 			SQNms, macS = aucSQN(opc, k, Auts, randHex)
@@ -611,7 +606,7 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 	}
 	SQNxorAK := make([]byte, sqnXorAkSize)
 	for i := 0; i < len(sqn); i++ {
-		SQNxorAK[i] = sqn[i] ^ AK[i]
+		SQNxorAK[i] = sqn[i] ^ AK[i] //se supone que ak y sqn son del mismo tamano
 	}
 	AUTN := append(append(SQNxorAK, AMF...), macA...)
 	logger.UeauLog.Infof("AUTN = %x", AUTN)
