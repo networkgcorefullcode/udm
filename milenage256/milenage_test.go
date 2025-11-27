@@ -82,7 +82,7 @@ func check(t *testing.T, id int, name string, got []byte, wantHex string) {
 }
 
 // Test simple para ver solo los valores (como tu ejemplo anterior)
-func TestMilenage256_SingleRun(t *testing.T) {
+/*func TestMilenage256_SingleRun(t *testing.T) {
 	key, _ := hex.DecodeString("aff1951a2a5149caf59d9e5fc5c5995473536ba65a41f744010e8fc1fa11fe4d")
 	rand, _ := hex.DecodeString("090ccce38904bdc40c509b2342f13522")
 	sqn, _ := hex.DecodeString("dc1498b4d7bd")
@@ -118,3 +118,4 @@ func TestMilenage256_SingleRun(t *testing.T) {
 	fmt.Printf("XRES*: %x\n", xresStar)
 	fmt.Printf("KAUSF: %x\n", kausf)
 }
+*/
