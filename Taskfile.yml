@@ -64,7 +64,7 @@ tasks:
       - mkdir -p {{.GO_BIN_PATH}}
       - |
         cd {{.GO_SRC_PATH}} && \
-        CGO_ENABLED=0 go build -o {{.GO_BIN_PATH}}/{{.GO_NF}} {{.GO_NF}}.go
+        CGO_ENABLED=1 go build -ldflags '-extldflags "-static"' -o {{.GO_BIN_PATH}}/{{.GO_NF}} {{.GO_NF}}.go
     sources:
       - "**/*.go"
       - "!**/*_test.go"
