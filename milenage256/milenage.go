@@ -1,16 +1,17 @@
 package milenage256
 
-/*
-#cgo CFLAGS: -I.
-#include "milenage256.h"
-*/
-import "C"
 import (
 	"bytes"
 	"errors"
 	"fmt"
 	"unsafe"
 )
+
+/*
+#cgo CFLAGS: -I.
+#include "milenage256.h"
+*/
+import "C"
 
 // Config define los parámetros de configuración y personalización.
 // Esta estructura es pura de Go y segura para pasar entre goroutines.
