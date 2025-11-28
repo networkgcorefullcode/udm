@@ -56,6 +56,7 @@ vars:
 
 tasks:
   # Build Go binary
+  # puse CGO_ENABLED=1 para que funcionara milenage256 que llama con cgo a una codigo en c, luego en el ci-gitlab.yaml apunte la variable del template a una que instala gcc
   build:
     desc: "Build udm binary"
     aliases: [udm, nfs, all]
@@ -64,7 +65,7 @@ tasks:
       - mkdir -p {{.GO_BIN_PATH}}
       - |
         cd {{.GO_SRC_PATH}} && \
-        CGO_ENABLED=1 go build -ldflags '-extldflags "-static"' -o {{.GO_BIN_PATH}}/{{.GO_NF}} {{.GO_NF}}.go
+        CGO_ENABLED=1 go build -ldflags '-extldflags "-static"' -o {{.GO_BIN_PATH}}/{{.GO_NF}} {{.GO_NF}}.go 
     sources:
       - "**/*.go"
       - "!**/*_test.go"
