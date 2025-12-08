@@ -12,17 +12,17 @@ import (
 func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 	// --- DATOS DEL TEST CASE #4d ---
 	keyHex := "aff1951a2a5149caf59d9e5fc5c5995473536ba65a41f744010e8fc1fa11fe4d"
-	randHex := "090ccce38904bdc40c509b2342f13522"
-	sqnHex := "dc1498b4d7bd"
-	amfHex := "93d7"
+	randHex := "96502e033ec7c6dd192fae50ae6a9777"
+	sqnHex := "16f3b3f70fc3"
+	amfHex := "8000"
 	opcHex := "b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6"
 	// Valores esperados (Output)
 	wantOPc := "b5a3105ad5a3188cc59cb46690a4df298339213d16b24c73f52c654fb0367cf6"
-	wantMacA := "9c79c4a45b771187"
-	wantRes := "aedd7ff35e1375f6"
-	wantCk := "b7cb9b55d17bd311b64da411f6513ea5f1fff5795bfd91a5d463f18704c26178"
-	wantIk := "7f095b8fd8f7e501ff52d8994d294e9368f02e2db0d61adb15ae695809fcf482"
-	wantAk := "fccd9c204f14"
+	wantMacA := "c101e0e7708f7ca5"
+	wantRes := "892be4620d3a07b7"
+	wantCk := "0854535b4bb6c143908abc150cdcec4eea12f851093235142d10f85cdec905af"
+	wantIk := "918a69f483c472fe333fd9e6f4ea24b950bf7d15481b61e5da103450d5db0a6d"
+	wantAk := "bc4bb134d953"
 
 	// Decodificar inputs
 	key, _ := hex.DecodeString(keyHex)
@@ -66,7 +66,7 @@ func TestMilenage256_TestCase4d_Concurrency(t *testing.T) {
 			check(t, id, "CK", ck, wantCk)
 			check(t, id, "IK", ik, wantIk)
 			check(t, id, "AK", ak, wantAk)
-
+			check(t, id, "sqn", sqn, sqnHex) // test*** para probar si es el mismo sqn
 		}(i)
 	}
 
