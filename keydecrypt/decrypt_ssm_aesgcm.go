@@ -7,7 +7,7 @@ import (
 	ssm_models "github.com/networkgcorefullcode/ssm/models"
 	"github.com/omec-project/openapi/models"
 	"github.com/omec-project/udm/logger"
-	"github.com/omec-project/udm/util/apiclient"
+	"github.com/omec-project/udm/ssm/apiclient"
 )
 
 const (

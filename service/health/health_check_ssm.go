@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/omec-project/udm/logger"
+	"github.com/omec-project/udm/ssm/apiclient"
 	"github.com/omec-project/udm/util"
-	"github.com/omec-project/udm/util/apiclient"
 )
 
 var healthMutex sync.Mutex

@@ -7,7 +7,7 @@ import (
 	ssm_models "github.com/networkgcorefullcode/ssm/models"
 	"github.com/omec-project/openapi/models"
 	"github.com/omec-project/udm/logger"
-	"github.com/omec-project/udm/util/apiclient"
+	"github.com/omec-project/udm/ssm/apiclient"
 )
 
 func DecryptSSM(encryptedData, iv, keyLabel string, encryptionAlgorithm, id int32, ssmClient *ssm_models.APIClient) (string, *models.ProblemDetails) {

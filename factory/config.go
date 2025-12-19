@@ -40,6 +40,7 @@ type Configuration struct {
 	UdmName                  string   `yaml:"udmName,omitempty"`
 	Sbi                      *Sbi     `yaml:"sbi,omitempty"`
 	Ssm                      *Ssm     `yaml:"ssm,omitempty"` // <--- AÑADIDO
+	Vault                    *Vault   `yaml:"vault,omitempty"`
 	ServiceList              []string `yaml:"serviceList,omitempty"`
 	NrfUri                   string   `yaml:"nrfUri,omitempty"`
 	WebuiUri                 string   `yaml:"webuiUri"`
@@ -70,6 +71,35 @@ type Ssm struct {
 	Host         string    `yaml:"host"`
 	MTls         *TLS2     `yaml:"m-tls,omitempty"`
 	Login        *SSMLogin `yaml:"login,omitempty"` // use this config only for development purposes use environment variables in production
+}
+
+type Vault struct {
+	Address      string `yaml:"address,omitempty"`
+	VaultUri     string `yaml:"vault-uri,omitempty"`
+	AllowVault   bool   `yaml:"allow-vault,omitempty"`
+	Token        string `yaml:"token,omitempty"`
+	MountApp     string `yaml:"mount-app,omitempty"`
+	TLS_Insecure bool   `yaml:"tls-insecure,omitempty"`
+	MTls         *TLS2  `yaml:"m-tls,omitempty"`
+	CertRole     string `yaml:"cert-role,omitempty"`
+	K8sRole      string `yaml:"k8s-role,omitempty"`
+	K8sJWTPath   string `yaml:"k8s-jwt-path,omitempty"`
+	RoleID       string `yaml:"role-id,omitempty"`
+	SecretID     string `yaml:"secret-id,omitempty"`
+
+	// Auth mount paths for custom Vault configurations
+	AppRoleMountPath string `yaml:"approle-mount-path,omitempty"` // e.g., "approle" (default) or custom mount
+	K8sMountPath     string `yaml:"k8s-mount-path,omitempty"`     // e.g., "kubernetes" (default) or custom mount
+	CertMountPath    string `yaml:"cert-mount-path,omitempty"`    // e.g., "cert" (default) or custom mount
+
+	// Paths and formats for Vault KV and Transit
+	KeyKVPath              string `yaml:"key-kv-path,omitempty"`               // e.g., "secret/data/k4keys"
+	KeyKVMetadataPath      string `yaml:"key-kv-metadata-path,omitempty"`      // e.g., "secret/metadata/k4keys"
+	TransitKeysListPath    string `yaml:"transit-keys-list-path,omitempty"`    // e.g., "transit/keys"
+	TransitKeyCreateFmt    string `yaml:"transit-key-create-fmt,omitempty"`    // e.g., "transit/keys/%s"
+	TransitKeyRotateFmt    string `yaml:"transit-key-rotate-fmt,omitempty"`    // e.g., "transit/keys/%s/rotate"
+	TransitKeyRewrapFmt    string `yaml:"transit-key-rewrap-fmt,omitempty"`    // e.g., "transit/rewrap/%s"
+	TransitKeysEncryptPath string `yaml:"transit-keys-encrypt-path,omitempty"` // e.g., "transit/encrypt"
 }
 
 type TLS2 struct {
