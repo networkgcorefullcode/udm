@@ -25,7 +25,7 @@ configuration:
     - nudm-pp
   vault:
     vault-uri: "http://127.0.0.1:8200"
-    allow-vault: true
+    enable: true
     tls-insecure: true
     
     # AppRole authentication

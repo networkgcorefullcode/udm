@@ -40,8 +40,20 @@ func InitConfigFactory(f string) error {
 		logger.CfgLog.Infof("webuiUri not set in configuration file. Using %v", UdmConfig.Configuration.WebuiUri)
 		return nil
 	}
+	configuration := UdmConfig.Configuration
+	if configuration.Ssm == nil {
+		configuration.Ssm = &Ssm{
+			Enable: false,
+		}
+	}
 
-	if UdmConfig.Configuration.Vault.Enable && UdmConfig.Configuration.Ssm.Enable {
+	if configuration.Vault == nil {
+		configuration.Vault = &Vault{
+			Enable: false,
+		}
+	}
+
+	if UdmConfig.Configuration.Vault != nil && UdmConfig.Configuration.Vault.Enable && UdmConfig.Configuration.Ssm.Enable {
 		return errors.New("error: vault and ssm are enable, you just use ssm or vault, change your config")
 	}
 
