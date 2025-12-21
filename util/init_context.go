@@ -67,6 +67,14 @@ func InitUDMContext(udmContext *context.UDMContext) {
 		udmContext.TLS_Insecure = ssm.TLS_Insecure
 	}
 
+	vault := configuration.Vault
+	udmContext.VaultEnable = false
+	if vault != nil {
+		if vault.Enable {
+			udmContext.VaultEnable = true
+		}
+	}
+
 	udmContext.EnableNrfCaching = configuration.EnableNrfCaching
 	if configuration.EnableNrfCaching {
 		if configuration.NrfCacheEvictionInterval == 0 {

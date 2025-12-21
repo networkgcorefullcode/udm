@@ -256,6 +256,24 @@ func GenerateAuthDataProcedure(authInfoRequest models.AuthenticationInfoRequest,
 				return nil, problemDetails
 			}
 
+		case udm_context.UDM_Self().VaultEnable:
+			if health.ReadStopCondition() {
+				problemDetails = &models.ProblemDetails{
+					Status: http.StatusForbidden,
+					Cause:  authenticationRejected,
+					Detail: "Service stop condition triggered",
+				}
+				return nil, problemDetails
+			}
+			// If SSM is enabled and there is an encryption key, use the SSM service to decrypt.
+			logger.UeauLog.Debugln("EncryptionKey is present, calling Vault Secret Transit to decrypt PermanentKeyValue.")
+
+			kStr, problemDetails = keydecrypt.DecryptVault(encryptedKiHex, authSubs.PermanentKey.Aad, keydecrypt.InternalKeyLabel)
+
+			if problemDetails != nil {
+				return nil, problemDetails
+			}
+
 		case encryptionKeyHex == "" && authSubs.PermanentKey.EncryptionAlgorithm == 0:
 			// If there is no encryption key, we assume that the permanent key is not encrypted.
 			logger.UeauLog.Debugln("EncryptionKey is empty, using PermanentKeyValue as is.")

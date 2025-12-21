@@ -76,7 +76,7 @@ type Ssm struct {
 type Vault struct {
 	Address      string `yaml:"address,omitempty"`
 	VaultUri     string `yaml:"vault-uri,omitempty"`
-	AllowVault   bool   `yaml:"allow-vault,omitempty"`
+	Enable       bool   `yaml:"allow-vault,omitempty"`
 	Token        string `yaml:"token,omitempty"`
 	MountApp     string `yaml:"mount-app,omitempty"`
 	TLS_Insecure bool   `yaml:"tls-insecure,omitempty"`
@@ -93,13 +93,7 @@ type Vault struct {
 	CertMountPath    string `yaml:"cert-mount-path,omitempty"`    // e.g., "cert" (default) or custom mount
 
 	// Paths and formats for Vault KV and Transit
-	KeyKVPath              string `yaml:"key-kv-path,omitempty"`               // e.g., "secret/data/k4keys"
-	KeyKVMetadataPath      string `yaml:"key-kv-metadata-path,omitempty"`      // e.g., "secret/metadata/k4keys"
-	TransitKeysListPath    string `yaml:"transit-keys-list-path,omitempty"`    // e.g., "transit/keys"
-	TransitKeyCreateFmt    string `yaml:"transit-key-create-fmt,omitempty"`    // e.g., "transit/keys/%s"
-	TransitKeyRotateFmt    string `yaml:"transit-key-rotate-fmt,omitempty"`    // e.g., "transit/keys/%s/rotate"
-	TransitKeyRewrapFmt    string `yaml:"transit-key-rewrap-fmt,omitempty"`    // e.g., "transit/rewrap/%s"
-	TransitKeysEncryptPath string `yaml:"transit-keys-encrypt-path,omitempty"` // e.g., "transit/encrypt"
+	TransitKeysDecryptPath string `yaml:"transit-keys-decrypt-path,omitempty"` // e.g., "transit/decrypt/%s"
 }
 
 type TLS2 struct {

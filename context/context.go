@@ -59,6 +59,7 @@ type UDMContext struct {
 	SsmUri                         string
 	TLS_Insecure                   bool
 	SsmEnable                      bool
+	VaultEnable                    bool
 }
 
 type UdmUeContext struct {

@@ -166,6 +166,17 @@ func (udm *UDM) Start() {
 		time.Sleep(time.Second * 5) // stop work to send the health check function
 	}
 
+	if factory.UdmConfig.Configuration.Vault.Enable {
+		if _, err := apiclient.LoginVault(); err != nil {
+			logger.AppLog.Errorf("Error logging into Vault: %v", err)
+			return
+		}
+		logger.AppLog.Infoln("Vault login successful")
+		// ssmsync.SetCfgChannel(configMsgChan)
+		go health.HealthCheckVault()
+		time.Sleep(time.Second * 5) // stop work to send the health check function
+	}
+
 	go metrics.InitMetrics()
 
 	self := udmContext.UDM_Self()

@@ -10,6 +10,7 @@
 package factory
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -36,6 +37,11 @@ func InitConfigFactory(f string) error {
 		logger.CfgLog.Infof("webuiUri not set in configuration file. Using %v", UdmConfig.Configuration.WebuiUri)
 		return nil
 	}
+
+	if UdmConfig.Configuration.Vault.Enable && UdmConfig.Configuration.Ssm.Enable {
+		return errors.New("error: vault and ssm are enable, you just use ssm or vault, change your config")
+	}
+
 	err = validateWebuiUri(UdmConfig.Configuration.WebuiUri)
 	return err
 }
