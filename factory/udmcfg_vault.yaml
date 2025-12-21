@@ -23,17 +23,21 @@ configuration:
     - nudm-ueau
     - nudm-ee
     - nudm-pp
-  ssm:
-    enable: true
-    host: https://localhost:9000
-    tls_insecure: true
-    m-tls:
-      crt: client-udm.crt
-      key: client-udm.key
-      ca: ca.crt
-    login:
-      service-id: "udm"
-      password: "376c5647305559467878782648496640"
+  vault:
+    vault-uri: "http://127.0.0.1:8200"
+    allow-vault: true
+    tls-insecure: true
+    
+    # AppRole authentication
+    role-id: "${VAULT_ROLE_ID}"
+    secret-id: "${VAULT_SECRET_ID}"
+    
+    # Custom mount paths for auth methods (optional, uses defaults if not specified)
+    approle-mount-path: "auth-dev-approle"  # Default: "approle"
+    # k8s-mount-path: "kubernetes"   # Default: "kubernetes"
+    cert-mount-path: "auth-dev-cert"        # Default: "cert"
+    transit-keys-decrypt-path: "transit-dev/decrypt/%s"
+
   webuiUri: http://localhost:5001
   keys:
     udmProfileAHNPublicKey: 5a8d38864820197c3394b92613b20b91633cbd897119273bf8e4a6f4eec0a650

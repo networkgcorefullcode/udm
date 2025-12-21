@@ -29,7 +29,10 @@ func InitConfigFactory(f string) error {
 	}
 	UdmConfig = Config{}
 
-	if err = yaml.Unmarshal(content, &UdmConfig); err != nil {
+	// expande ${VAR} y $VAR desde el entorno
+	expanded := []byte(os.ExpandEnv(string(content)))
+
+	if err = yaml.Unmarshal(expanded, &UdmConfig); err != nil {
 		return err
 	}
 	if UdmConfig.Configuration.WebuiUri == "" {

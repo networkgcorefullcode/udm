@@ -74,7 +74,6 @@ type Ssm struct {
 }
 
 type Vault struct {
-	Address      string `yaml:"address,omitempty"`
 	VaultUri     string `yaml:"vault-uri,omitempty"`
 	Enable       bool   `yaml:"allow-vault,omitempty"`
 	Token        string `yaml:"token,omitempty"`
