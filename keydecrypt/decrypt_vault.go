@@ -54,6 +54,8 @@ func DecryptVault(encryptedData, aad, keyLabel string) (string, *models.ProblemD
 			Detail: fmt.Sprintf("Failed to decrypt PermanentKey via SSM: %s", err),
 		}
 		logger.UeauLog.Errorf("SSM decryption failed: %+v", err)
+		// try login again
+		apiclient.LoginVault()
 		return "", problemDetails
 	}
 
